@@ -27,8 +27,18 @@ jobs:
         run: cargo fmt --all -- --check
       - name: Run Clippy
         run: cargo clippy --all-targets --all-features -- -D warnings
-      - name: Run tests
-        run: cargo test --all-features
+      - name: Run tests and coverage (Tarpaulin)
+        run: |
+          cargo install cargo-tarpaulin --version 0.30.0 || true
+          cargo tarpaulin --ignore-tests --out Xml
+
+      - name: Setup Node (Para rodar o jscpd)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Checagem de Duplicação (jscpd)
+        run: npx --yes jscpd@5.0.14 src --threshold 5
 
   docker-build-test:
     runs-on: ubuntu-latest
