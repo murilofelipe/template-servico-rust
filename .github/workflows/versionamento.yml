@@ -21,6 +21,13 @@ jobs:
       - name: Buscar branch base
         run: git fetch --no-tags origin "${{ github.base_ref }}"
 
+      - name: Política de versão (branch de release, tag e changelog)
+        run: |
+          bash scripts/version-check.sh \
+            "origin/${{ github.base_ref }}" \
+            "${{ github.head_ref }}" \
+            "${{ github.base_ref }}"
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
