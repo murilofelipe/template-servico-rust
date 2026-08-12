@@ -22,3 +22,9 @@ Todo desenvolvimento e assistência realizados por agentes neste projeto (e nos 
 - **Tags de Release**: Sempre que uma release for realizada, uma tag Git (`vX.X.X` seguindo o Semantic Versioning) deve ser gerada e atualizada no projeto. Ao criar documentação de changelog ou release notes, lembre-se de associar a essas tags.
 
 Agentes autônomos que realizam merges ou abrem PRs **não têm permissão** para contornar essa regra sem autorização explícita do usuário.
+
+# Regra: Descrições Detalhadas (Commits e PRs)
+
+É estritamente obrigatório que todos os **Commits** e **Pull Requests** contenham descrições ricas e detalhadas. 
+- **Commits:** O título deve seguir o padrão Conventional Commits (ex: `feat: add ...`), seguido de duas linhas em branco e um corpo explicando o *porquê* da alteração, o contexto da decisão técnica tomada e como a solução foi arquitetada.
+- **Pull Requests:** Devem possuir um título claro e um corpo detalhado (markdown) contendo as seções: `Objetivo`, `O que foi alterado`, `Por que essas mudanças são necessárias` e `Testes Realizados`. Nunca abra um PR com uma descrição vazia ou de apenas uma linha.
