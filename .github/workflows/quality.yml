@@ -23,15 +23,13 @@ jobs:
       uses: Swatinem/rust-cache@v2
 
     - name: Check code formatting
-      run: cargo fmt --all -- --check
+      run: make format-check
       
     - name: Check linting (Clippy)
-      run: cargo clippy --all-targets --all-features -- -D warnings
+      run: make lint
       
-    - name: Run tests and coverage (Tarpaulin)
-      run: |
-        cargo install cargo-tarpaulin --version 0.30.0 || true
-        cargo tarpaulin --ignore-tests --out Xml
+    - name: Run tests
+      run: make test
 
     - name: Setup Node (Para rodar o jscpd)
       uses: actions/setup-node@v4
