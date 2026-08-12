@@ -1,0 +1,24 @@
+name: Limpeza de Imagens Antigas do Registry
+
+on:
+  schedule:
+    - cron: '0 3 * * 0'
+  workflow_dispatch:
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Excluir imagens de contêiner antigas
+        uses: snok/container-retention-policy@v2
+        with:
+          image-names: ${{ github.event.repository.name }}
+          cut-off: 7 days ago UTC
+          account-type: personal
+          keep-tags: |
+            latest
+            develop
+          keep-semver-tagged-last: 2
+          keep-tagged-last: 5
+          tag-match: develop
+          token: ${{ secrets.GITHUB_TOKEN }}
