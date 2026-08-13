@@ -1,22 +1,21 @@
-use dotenvy::dotenv;
-use std::env;
-use template_servico_rust::{db, routes, state::AppState};
+use template_servico_rust::{config::AppConfig, db, routes, state::AppState};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    dotenv().ok();
+    let config = AppConfig::load();
 
-    let database_url = env::var("DATABASE_URL")
-        .unwrap_or_else(|_| "postgres://postgres:postgres@localhost:5432/template_db".to_string());
-
-    let pool = db::create_pool(&database_url).await?;
+    let pool = db::create_pool(&config.database_url).await?;
     db::run_migrations(&pool).await?;
 
-    let state = AppState { pool };
-    let app = routes::create_router(state);
+    let app_state = AppState {
+        pool,
+        config: config.clone(),
+    };
+    let app = routes::create_router(app_state);
 
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await?;
-    println!("Server running on http://0.0.0.0:3000");
+    let address = format!("{}:{}", config.host, config.port);
+    let listener = tokio::net::TcpListener::bind(&address).await?;
+    println!("Server running on http://{}", address);
     axum::serve(listener, app).await?;
 
     Ok(())

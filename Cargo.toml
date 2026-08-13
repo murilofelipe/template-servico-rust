@@ -13,6 +13,9 @@ dotenvy = "0.15"
 thiserror = "1.0"
 uuid = { version = "1.10", features = ["v4", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
+utoipa = { version = "4", features = ["axum_extras", "uuid", "chrono"] }
+utoipa-swagger-ui = { version = "6", features = ["axum"] }
+envy = "0.4"
 
 [dev-dependencies]
 tower = { version = "0.5", features = ["util"] }

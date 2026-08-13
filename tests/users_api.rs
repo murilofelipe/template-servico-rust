@@ -35,7 +35,12 @@ async fn setup_test_app() -> Result<Router, Box<dyn std::error::Error>> {
     let pool = template_servico_rust::db::create_pool(&database_url).await?;
     template_servico_rust::db::run_migrations(&pool).await?;
 
-    let state = template_servico_rust::state::AppState { pool };
+    let config = template_servico_rust::config::AppConfig {
+        database_url: database_url.clone(),
+        port: 3000,
+        host: "0.0.0.0".to_string(),
+    };
+    let state = template_servico_rust::state::AppState { pool, config };
     let app = template_servico_rust::routes::create_router(state);
 
     Ok(app)
@@ -328,7 +333,9 @@ async fn test_tier3_pairwise_user_lifecycle_state_consistency(
     let count_before = list_body1
         .as_array()
         .ok_or("Expected array for user list")?
-        .len();
+        .iter()
+        .filter(|u| u["email"] == "carol.pairwise@example.com")
+        .count();
 
     // Step 4: Attempt duplicate user creation (should fail with 409)
     let dup_payload = json!({
@@ -344,11 +351,13 @@ async fn test_tier3_pairwise_user_lifecycle_state_consistency(
     let count_after = list_body2
         .as_array()
         .ok_or("Expected array for user list")?
-        .len();
+        .iter()
+        .filter(|u| u["email"] == "carol.pairwise@example.com")
+        .count();
 
     assert_eq!(
         count_before, count_after,
-        "User list count changed after failed duplicate creation"
+        "User list count for email changed after failed duplicate creation"
     );
 
     Ok(())

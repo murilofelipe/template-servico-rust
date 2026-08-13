@@ -12,10 +12,38 @@ use crate::{
     state::AppState,
 };
 
-pub async fn health_check() -> impl IntoResponse {
-    StatusCode::OK
+#[utoipa::path(
+    get,
+    path = "/health",
+    responses(
+        (status = 200, description = "Service is healthy and DB is up"),
+        (status = 503, description = "Service or DB is down")
+    )
+)]
+pub async fn health_check(State(state): State<AppState>) -> impl IntoResponse {
+    let db_ok = sqlx::query("SELECT 1").execute(&state.pool).await.is_ok();
+
+    if db_ok {
+        (StatusCode::OK, Json(json!({ "status": "ok", "db": "up" })))
+    } else {
+        (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(json!({ "status": "error", "db": "down" })),
+        )
+    }
 }
 
+#[utoipa::path(
+    post,
+    path = "/users",
+    request_body = CreateUserPayload,
+    responses(
+        (status = 201, description = "User created successfully", body = User),
+        (status = 400, description = "Invalid payload"),
+        (status = 409, description = "Conflict, email already exists"),
+        (status = 500, description = "Internal Server Error")
+    )
+)]
 pub async fn create_user(
     State(state): State<AppState>,
     Json(payload): Json<CreateUserPayload>,
@@ -63,6 +91,14 @@ pub async fn create_user(
     }
 }
 
+#[utoipa::path(
+    get,
+    path = "/users",
+    responses(
+        (status = 200, description = "List of all users", body = [User]),
+        (status = 500, description = "Internal Server Error")
+    )
+)]
 pub async fn list_users(State(state): State<AppState>) -> impl IntoResponse {
     let result = sqlx::query_as::<_, User>(
         r#"
@@ -81,6 +117,18 @@ pub async fn list_users(State(state): State<AppState>) -> impl IntoResponse {
     }
 }
 
+#[utoipa::path(
+    get,
+    path = "/users/{id}",
+    params(
+        ("id" = Uuid, Path, description = "User ID")
+    ),
+    responses(
+        (status = 200, description = "User found", body = User),
+        (status = 404, description = "User not found"),
+        (status = 500, description = "Internal Server Error")
+    )
+)]
 pub async fn get_user(State(state): State<AppState>, Path(id): Path<Uuid>) -> impl IntoResponse {
     let result = sqlx::query_as::<_, User>(
         r#"
