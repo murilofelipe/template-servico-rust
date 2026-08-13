@@ -35,7 +35,12 @@ async fn setup_test_app() -> Result<Router, Box<dyn std::error::Error>> {
     let pool = template_servico_rust::db::create_pool(&database_url).await?;
     template_servico_rust::db::run_migrations(&pool).await?;
 
-    let state = template_servico_rust::state::AppState { pool };
+    let config = template_servico_rust::config::AppConfig {
+        database_url: database_url.clone(),
+        port: 3000,
+        host: "0.0.0.0".to_string(),
+    };
+    let state = template_servico_rust::state::AppState { pool, config };
     let app = template_servico_rust::routes::create_router(state);
 
     Ok(app)
