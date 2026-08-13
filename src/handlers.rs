@@ -40,7 +40,7 @@ pub async fn create_user(
         INSERT INTO users (id, name, email)
         VALUES ($1, $2, $3)
         RETURNING id, name, email, created_at, updated_at
-        "#
+        "#,
     )
     .bind(user_id)
     .bind(payload.name)
@@ -52,11 +52,12 @@ pub async fn create_user(
         Ok(user) => (StatusCode::CREATED, Json(json!(user))),
         Err(e) => {
             let error_msg = e.to_string();
-            let status = if error_msg.contains("unique constraint") || error_msg.contains("duplicate key") {
-                StatusCode::CONFLICT
-            } else {
-                StatusCode::INTERNAL_SERVER_ERROR
-            };
+            let status =
+                if error_msg.contains("unique constraint") || error_msg.contains("duplicate key") {
+                    StatusCode::CONFLICT
+                } else {
+                    StatusCode::INTERNAL_SERVER_ERROR
+                };
             (status, Json(json!({ "error": error_msg })))
         }
     }
@@ -66,7 +67,7 @@ pub async fn list_users(State(state): State<AppState>) -> impl IntoResponse {
     let result = sqlx::query_as::<_, User>(
         r#"
         SELECT id, name, email, created_at, updated_at FROM users
-        "#
+        "#,
     )
     .fetch_all(&state.pool)
     .await;
@@ -80,15 +81,12 @@ pub async fn list_users(State(state): State<AppState>) -> impl IntoResponse {
     }
 }
 
-pub async fn get_user(
-    State(state): State<AppState>,
-    Path(id): Path<Uuid>,
-) -> impl IntoResponse {
+pub async fn get_user(State(state): State<AppState>, Path(id): Path<Uuid>) -> impl IntoResponse {
     let result = sqlx::query_as::<_, User>(
         r#"
         SELECT id, name, email, created_at, updated_at FROM users
         WHERE id = $1
-        "#
+        "#,
     )
     .bind(id)
     .fetch_optional(&state.pool)

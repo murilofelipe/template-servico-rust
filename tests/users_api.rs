@@ -157,8 +157,7 @@ async fn test_tier1_get_user_by_id_returns_200_ok() -> Result<(), Box<dyn std::e
         "email": "bob.tier1@example.com"
     });
 
-    let (create_status, create_body) =
-        send_request(&app, "POST", "/users", Some(payload)).await?;
+    let (create_status, create_body) = send_request(&app, "POST", "/users", Some(payload)).await?;
     assert_eq!(create_status, StatusCode::CREATED);
 
     let user_id = create_body["id"]
@@ -314,9 +313,7 @@ async fn test_tier3_pairwise_user_lifecycle_state_consistency(
         send_request(&app, "POST", "/users", Some(create_payload)).await?;
     assert_eq!(create_status, StatusCode::CREATED);
 
-    let user_id = create_body["id"]
-        .as_str()
-        .ok_or("Missing ID in response")?;
+    let user_id = create_body["id"].as_str().ok_or("Missing ID in response")?;
 
     // Step 2: Fetch by ID
     let get_uri = format!("/users/{}", user_id);
@@ -338,8 +335,7 @@ async fn test_tier3_pairwise_user_lifecycle_state_consistency(
         "name": "Carol Clone",
         "email": "carol.pairwise@example.com"
     });
-    let (dup_status, _dup_body) =
-        send_request(&app, "POST", "/users", Some(dup_payload)).await?;
+    let (dup_status, _dup_body) = send_request(&app, "POST", "/users", Some(dup_payload)).await?;
     assert_eq!(dup_status, StatusCode::CONFLICT);
 
     // Step 5: Verify user list count and state remain unchanged
@@ -387,8 +383,14 @@ async fn test_tier4_multi_user_sequential_creation_and_batch_listing(
         .ok_or("Expected array response for /users")?;
 
     for (name, email) in &users_to_create {
-        let found = list_arr.iter().any(|u| u["email"] == *email && u["name"] == *name);
-        assert!(found, "User {} with email {} not found in user list", name, email);
+        let found = list_arr
+            .iter()
+            .any(|u| u["email"] == *email && u["name"] == *name);
+        assert!(
+            found,
+            "User {} with email {} not found in user list",
+            name, email
+        );
     }
 
     Ok(())

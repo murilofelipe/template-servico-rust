@@ -6,9 +6,8 @@ use template_servico_rust::{db, routes, state::AppState};
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     dotenv().ok();
 
-    let database_url = env::var("DATABASE_URL").unwrap_or_else(|_| {
-        "postgres://postgres:postgres@localhost:5432/template_db".to_string()
-    });
+    let database_url = env::var("DATABASE_URL")
+        .unwrap_or_else(|_| "postgres://postgres:postgres@localhost:5432/template_db".to_string());
 
     let pool = db::create_pool(&database_url).await?;
     db::run_migrations(&pool).await?;
