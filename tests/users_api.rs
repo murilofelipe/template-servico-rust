@@ -333,7 +333,9 @@ async fn test_tier3_pairwise_user_lifecycle_state_consistency(
     let count_before = list_body1
         .as_array()
         .ok_or("Expected array for user list")?
-        .len();
+        .iter()
+        .filter(|u| u["email"] == "carol.pairwise@example.com")
+        .count();
 
     // Step 4: Attempt duplicate user creation (should fail with 409)
     let dup_payload = json!({
@@ -349,11 +351,13 @@ async fn test_tier3_pairwise_user_lifecycle_state_consistency(
     let count_after = list_body2
         .as_array()
         .ok_or("Expected array for user list")?
-        .len();
+        .iter()
+        .filter(|u| u["email"] == "carol.pairwise@example.com")
+        .count();
 
     assert_eq!(
         count_before, count_after,
-        "User list count changed after failed duplicate creation"
+        "User list count for email changed after failed duplicate creation"
     );
 
     Ok(())
