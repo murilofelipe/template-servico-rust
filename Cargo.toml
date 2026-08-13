@@ -14,6 +14,9 @@ thiserror = "1.0"
 uuid = { version = "1.10", features = ["v4", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
 
+[dev-dependencies]
+tower = { version = "0.5", features = ["util"] }
+
 [lints.clippy]
 unwrap_used = "deny"
 expect_used = "deny"
