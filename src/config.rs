@@ -25,7 +25,7 @@ impl AppConfig {
             let database_url = env::var("DATABASE_URL").unwrap_or_else(|_| {
                 "postgres://postgres:postgres@localhost:5432/template_db".to_string()
             });
-            
+
             AppConfig {
                 database_url,
                 port: default_port(),

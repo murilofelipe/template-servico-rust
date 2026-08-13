@@ -21,15 +21,15 @@ use crate::{
     )
 )]
 pub async fn health_check(State(state): State<AppState>) -> impl IntoResponse {
-    let db_ok = sqlx::query("SELECT 1")
-        .execute(&state.pool)
-        .await
-        .is_ok();
+    let db_ok = sqlx::query("SELECT 1").execute(&state.pool).await.is_ok();
 
     if db_ok {
         (StatusCode::OK, Json(json!({ "status": "ok", "db": "up" })))
     } else {
-        (StatusCode::SERVICE_UNAVAILABLE, Json(json!({ "status": "error", "db": "down" })))
+        (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(json!({ "status": "error", "db": "down" })),
+        )
     }
 }
 
