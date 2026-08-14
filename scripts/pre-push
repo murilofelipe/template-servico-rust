@@ -32,6 +32,10 @@ done
 
 export DATABASE_URL="postgres://postgres:postgres@localhost:5432/template_servico_rust_test"
 
+# Executa os testes de integração de forma sequencial para não estourar 
+# o limite de conexões do postgres local (devido a n pools simultâneos)
+export RUST_TEST_THREADS=1
+
 # Run the 'check' target from Makefile
 make check
 
