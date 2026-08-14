@@ -19,7 +19,6 @@ chrono = { version = "0.4", features = ["serde"] }
 utoipa = { version = "4", features = ["axum_extras", "uuid", "chrono"] }
 utoipa-swagger-ui = { version = "6", features = ["axum"] }
 envy = "0.4"
-tracing = "0.1.44"
 
 [dev-dependencies]
 tower = { version = "0.5", features = ["util"] }
