@@ -18,7 +18,8 @@ fi
 # Variável para sqlx rodar offline nos testes (se aplicável futuramente)
 export SQLX_OFFLINE=true
 
-echo "🐳 Subindo banco de dados de testes via docker compose..."
+echo "🐳 Resetando e subindo banco de dados de testes via docker compose..."
+docker compose down -v
 docker compose up -d db
 
 echo "⏳ Aguardando PostgreSQL aceitar conexões..."
