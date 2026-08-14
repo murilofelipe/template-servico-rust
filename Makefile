@@ -14,10 +14,13 @@ lint:
 test:
 	cargo test --all-targets --all-features
 
+audit:
+	cargo audit --ignore RUSTSEC-2023-0071
+
 coverage:
 	cargo test --all-targets --all-features
 
-check: format-check lint test
+check: format-check lint audit test
 
 db-create:
 	sqlx database create --database-url $(DATABASE_URL)
