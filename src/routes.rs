@@ -2,6 +2,12 @@ use axum::{
     routing::{get, post},
     Router,
 };
+use std::time::Duration;
+use tower_http::{
+    cors::{Any, CorsLayer},
+    timeout::TimeoutLayer,
+    trace::TraceLayer,
+};
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
@@ -24,6 +30,11 @@ use crate::{
 struct ApiDoc;
 
 pub fn create_router(state: AppState) -> Router {
+    let cors = CorsLayer::new()
+        .allow_origin(Any)
+        .allow_methods(Any)
+        .allow_headers(Any);
+
     Router::new()
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
         .route("/health", get(handlers::health_check))
@@ -32,5 +43,8 @@ pub fn create_router(state: AppState) -> Router {
             post(handlers::create_user).get(handlers::list_users),
         )
         .route("/users/:id", get(handlers::get_user))
+        .layer(TraceLayer::new_for_http())
+        .layer(cors)
+        .layer(TimeoutLayer::new(Duration::from_secs(10)))
         .with_state(state)
 }

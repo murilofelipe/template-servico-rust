@@ -11,11 +11,15 @@ serde_json = "1.0"
 sqlx = { version = "0.8", features = ["runtime-tokio", "tls-native-tls", "postgres", "uuid", "chrono", "json", "macros", "migrate"] }
 dotenvy = "0.15"
 thiserror = "1.0"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+tower-http = { version = "0.6", features = ["trace", "cors", "timeout", "set-header"] }
 uuid = { version = "1.10", features = ["v4", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
 utoipa = { version = "4", features = ["axum_extras", "uuid", "chrono"] }
 utoipa-swagger-ui = { version = "6", features = ["axum"] }
 envy = "0.4"
+tracing = "0.1.44"
 
 [dev-dependencies]
 tower = { version = "0.5", features = ["util"] }
