@@ -37,11 +37,14 @@ jobs:
     - name: Cache dependencies
       uses: Swatinem/rust-cache@v2
 
-    - name: Check code formatting
+    - name: Formatação (cargo fmt)
       run: make format-check
-      
-    - name: Check linting (Clippy)
+
+    - name: Linting (cargo clippy)
       run: make lint
+
+    - name: Análise de Segurança (cargo audit)
+      run: cargo install cargo-audit && cargo audit --ignore RUSTSEC-2023-0071
       
     - name: Run tests
       run: make test
