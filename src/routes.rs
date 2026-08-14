@@ -45,6 +45,9 @@ pub fn create_router(state: AppState) -> Router {
         .route("/users/:id", get(handlers::get_user))
         .layer(TraceLayer::new_for_http())
         .layer(cors)
-        .layer(TimeoutLayer::new(Duration::from_secs(10)))
+        .layer(TimeoutLayer::with_status_code(
+            Duration::from_secs(10),
+            axum::http::StatusCode::REQUEST_TIMEOUT,
+        ))
         .with_state(state)
 }
