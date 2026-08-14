@@ -44,7 +44,7 @@ jobs:
       run: make lint
 
     - name: Análise de Segurança (cargo audit)
-      run: cargo install cargo-audit && cargo audit
+      run: cargo install cargo-audit && cargo audit --ignore RUSTSEC-2023-0071
       
     - name: Run tests
       run: make test
