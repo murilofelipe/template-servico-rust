@@ -21,9 +21,15 @@ export SQLX_OFFLINE=true
 echo "🐳 Subindo banco de dados de testes via docker compose..."
 docker compose up -d db
 
-# Aguarda o banco ficar pronto
 echo "⏳ Aguardando PostgreSQL aceitar conexões..."
-sleep 3
+for i in {1..15}; do
+  if docker compose exec -T db pg_isready -U postgres -d template_servico_rust_test >/dev/null 2>&1; then
+    break
+  fi
+  sleep 1
+done
+
+export DATABASE_URL="postgres://postgres:postgres@localhost:5432/template_servico_rust_test"
 
 # Run the 'check' target from Makefile
 make check
