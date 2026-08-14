@@ -46,8 +46,8 @@ pub fn create_router(state: AppState) -> Router {
         .layer(TraceLayer::new_for_http())
         .layer(cors)
         .layer(TimeoutLayer::with_status_code(
-            Duration::from_secs(10),
             axum::http::StatusCode::REQUEST_TIMEOUT,
+            Duration::from_secs(10),
         ))
         .with_state(state)
 }
