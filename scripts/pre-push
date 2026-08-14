@@ -9,6 +9,15 @@ echo "=========================================="
 
 export PATH="$HOME/.cargo/bin:$PATH"
 
+if ! command -v cargo-audit &> /dev/null
+then
+    echo "📦 cargo-audit não encontrado. Instalando localmente..."
+    cargo install cargo-audit
+fi
+
+# Variável para sqlx rodar offline nos testes (se aplicável futuramente)
+export SQLX_OFFLINE=true
+
 # Run the 'check' target from Makefile
 make check
 
