@@ -1,4 +1,4 @@
-.PHONY: format format-check lint test coverage check db-create db-drop db-migrate db-prepare db-reset
+.PHONY: format format-check lint test coverage check verify-logs db-create db-drop db-migrate db-prepare db-reset
 
 DATABASE_URL ?= postgres://postgres:postgres@localhost:5432/template_db
 
@@ -21,6 +21,10 @@ coverage:
 	cargo tarpaulin --ignore-tests --out Xml --out Html
 
 check: format-check lint audit test
+
+verify-logs:
+	bash scripts/verify-logging.sh
+
 
 db-create:
 	sqlx database create --database-url $(DATABASE_URL)
