@@ -58,9 +58,26 @@ jobs:
       - name: Checagem de Duplicação (jscpd)
         run: npx --yes jscpd@5.0.14 src --threshold 5
 
+  sast:
+    name: SAST - Análise Estática de Segurança
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+      - name: Cache dependencies
+        uses: Swatinem/rust-cache@v2
+      - name: Install SAST Tools (cargo-audit & cargo-deny)
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-audit,cargo-deny
+      - name: Executar SAST (cargo audit e cargo deny)
+        run: make sast
+
   docker-build-test:
     runs-on: ubuntu-latest
-    needs: [lint-and-test]
+    needs: [lint-and-test, sast]
     steps:
       - name: Checkout do código
         uses: actions/checkout@v4
@@ -69,7 +86,7 @@ jobs:
 
   publish-to-registry:
     runs-on: ubuntu-latest
-    needs: [lint-and-test, docker-build-test]
+    needs: [lint-and-test, docker-build-test, sast]
     if: github.event_name == 'push'
     steps:
       - name: Checkout do código

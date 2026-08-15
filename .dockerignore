@@ -39,3 +39,13 @@ CLAUDE.md
 AGENTS.md
 plan.md
 docker-compose.yml
+
+# Test and coverage artifacts
+tarpaulin-report.*
+*.profraw
+*.profdata
+
+# Agent artifacts
+.agents/
+.aiignore
+.cargo/
