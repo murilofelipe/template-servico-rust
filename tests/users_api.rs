@@ -39,6 +39,7 @@ async fn setup_test_app() -> Result<Router, Box<dyn std::error::Error>> {
         database_url: database_url.clone(),
         port: 3000,
         host: "0.0.0.0".to_string(),
+        environment: template_servico_rust::config::AppEnvironment::Test,
     };
     let state = template_servico_rust::state::AppState { pool, config };
     let app = template_servico_rust::routes::create_router(state);
@@ -126,9 +127,10 @@ async fn test_tier1_health_check_returns_200_ok() -> Result<(), Box<dyn std::err
 #[tokio::test]
 async fn test_tier1_create_user_returns_201_created() -> Result<(), Box<dyn std::error::Error>> {
     let app = setup_test_app().await?;
+    let email = format!("alice.tier1.{}@example.com", Uuid::new_v4());
     let payload = json!({
         "name": "Alice Developer",
-        "email": "alice.tier1@example.com"
+        "email": email
     });
 
     let (status, body) = send_request(&app, "POST", "/users", Some(payload)).await?;
@@ -136,7 +138,7 @@ async fn test_tier1_create_user_returns_201_created() -> Result<(), Box<dyn std:
     assert_eq!(status, StatusCode::CREATED);
     assert!(body.get("id").is_some());
     assert_eq!(body["name"], "Alice Developer");
-    assert_eq!(body["email"], "alice.tier1@example.com");
+    assert_eq!(body["email"], email);
     assert!(body.get("created_at").is_some());
     assert!(body.get("updated_at").is_some());
 
@@ -157,9 +159,10 @@ async fn test_tier1_list_users_returns_200_ok() -> Result<(), Box<dyn std::error
 #[tokio::test]
 async fn test_tier1_get_user_by_id_returns_200_ok() -> Result<(), Box<dyn std::error::Error>> {
     let app = setup_test_app().await?;
+    let email = format!("bob.tier1.{}@example.com", Uuid::new_v4());
     let payload = json!({
         "name": "Bob Test",
-        "email": "bob.tier1@example.com"
+        "email": email
     });
 
     let (create_status, create_body) = send_request(&app, "POST", "/users", Some(payload)).await?;
@@ -175,7 +178,7 @@ async fn test_tier1_get_user_by_id_returns_200_ok() -> Result<(), Box<dyn std::e
     assert_eq!(get_status, StatusCode::OK);
     assert_eq!(get_body["id"], user_id);
     assert_eq!(get_body["name"], "Bob Test");
-    assert_eq!(get_body["email"], "bob.tier1@example.com");
+    assert_eq!(get_body["email"], email);
 
     Ok(())
 }
@@ -218,9 +221,10 @@ async fn test_tier2_create_user_invalid_email_returns_400_bad_request(
 async fn test_tier2_create_user_duplicate_email_returns_409_conflict(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let app = setup_test_app().await?;
+    let email = format!("duplicate.{}@example.com", Uuid::new_v4());
     let payload1 = json!({
         "name": "Original User",
-        "email": "duplicate@example.com"
+        "email": email
     });
 
     let (status1, _body1) = send_request(&app, "POST", "/users", Some(payload1)).await?;
@@ -228,7 +232,7 @@ async fn test_tier2_create_user_duplicate_email_returns_409_conflict(
 
     let payload2 = json!({
         "name": "Duplicate User",
-        "email": "duplicate@example.com"
+        "email": email
     });
 
     let (status2, _body2) = send_request(&app, "POST", "/users", Some(payload2)).await?;
@@ -308,11 +312,12 @@ async fn test_tier2_create_user_whitespace_name_returns_400_bad_request(
 async fn test_tier3_pairwise_user_lifecycle_state_consistency(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let app = setup_test_app().await?;
+    let email = format!("carol.pairwise.{}@example.com", Uuid::new_v4());
 
     // Step 1: Create User
     let create_payload = json!({
         "name": "Carol Pairwise",
-        "email": "carol.pairwise@example.com"
+        "email": email
     });
     let (create_status, create_body) =
         send_request(&app, "POST", "/users", Some(create_payload)).await?;
@@ -325,7 +330,7 @@ async fn test_tier3_pairwise_user_lifecycle_state_consistency(
     let (get_status, get_body) = send_request(&app, "GET", &get_uri, None).await?;
     assert_eq!(get_status, StatusCode::OK);
     assert_eq!(get_body["id"], user_id);
-    assert_eq!(get_body["email"], "carol.pairwise@example.com");
+    assert_eq!(get_body["email"], email);
 
     // Step 3: List all users to establish baseline count
     let (list_status1, list_body1) = send_request(&app, "GET", "/users", None).await?;
@@ -334,13 +339,13 @@ async fn test_tier3_pairwise_user_lifecycle_state_consistency(
         .as_array()
         .ok_or("Expected array for user list")?
         .iter()
-        .filter(|u| u["email"] == "carol.pairwise@example.com")
+        .filter(|u| u["email"] == email.as_str())
         .count();
 
     // Step 4: Attempt duplicate user creation (should fail with 409)
     let dup_payload = json!({
         "name": "Carol Clone",
-        "email": "carol.pairwise@example.com"
+        "email": email
     });
     let (dup_status, _dup_body) = send_request(&app, "POST", "/users", Some(dup_payload)).await?;
     assert_eq!(dup_status, StatusCode::CONFLICT);
@@ -352,7 +357,7 @@ async fn test_tier3_pairwise_user_lifecycle_state_consistency(
         .as_array()
         .ok_or("Expected array for user list")?
         .iter()
-        .filter(|u| u["email"] == "carol.pairwise@example.com")
+        .filter(|u| u["email"] == email.as_str())
         .count();
 
     assert_eq!(
@@ -372,11 +377,11 @@ async fn test_tier4_multi_user_sequential_creation_and_batch_listing(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let app = setup_test_app().await?;
 
-    let users_to_create = vec![
-        ("User One", "user1.tier4@example.com"),
-        ("User Two", "user2.tier4@example.com"),
-        ("User Three", "user3.tier4@example.com"),
-    ];
+    let e1 = format!("user1.{}@example.com", Uuid::new_v4());
+    let e2 = format!("user2.{}@example.com", Uuid::new_v4());
+    let e3 = format!("user3.{}@example.com", Uuid::new_v4());
+
+    let users_to_create = vec![("User One", e1), ("User Two", e2), ("User Three", e3)];
 
     for (name, email) in &users_to_create {
         let payload = json!({ "name": name, "email": email });
@@ -394,7 +399,7 @@ async fn test_tier4_multi_user_sequential_creation_and_batch_listing(
     for (name, email) in &users_to_create {
         let found = list_arr
             .iter()
-            .any(|u| u["email"] == *email && u["name"] == *name);
+            .any(|u| u["email"] == email.as_str() && u["name"] == *name);
         assert!(
             found,
             "User {} with email {} not found in user list",
@@ -410,9 +415,10 @@ async fn test_tier4_timestamp_data_integrity_and_rfc3339_validation(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let app = setup_test_app().await?;
 
+    let email = format!("dave.tier4.{}@example.com", Uuid::new_v4());
     let payload = json!({
         "name": "Dave Timestamp",
-        "email": "dave.tier4@example.com"
+        "email": email
     });
 
     let (status, body) = send_request(&app, "POST", "/users", Some(payload)).await?;

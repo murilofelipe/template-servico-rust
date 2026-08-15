@@ -6,8 +6,10 @@ use std::time::Duration;
 use tower_http::{
     cors::{Any, CorsLayer},
     timeout::TimeoutLayer,
-    trace::TraceLayer,
+    trace::{DefaultMakeSpan, DefaultOnFailure, DefaultOnRequest, DefaultOnResponse, TraceLayer},
+    LatencyUnit,
 };
+use tracing::Level;
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
@@ -35,6 +37,24 @@ pub fn create_router(state: AppState) -> Router {
         .allow_methods(Any)
         .allow_headers(Any);
 
+    let trace_layer = TraceLayer::new_for_http()
+        .make_span_with(
+            DefaultMakeSpan::new()
+                .level(Level::INFO)
+                .include_headers(false),
+        )
+        .on_request(DefaultOnRequest::new().level(Level::INFO))
+        .on_response(
+            DefaultOnResponse::new()
+                .level(Level::INFO)
+                .latency_unit(LatencyUnit::Millis),
+        )
+        .on_failure(
+            DefaultOnFailure::new()
+                .level(Level::ERROR)
+                .latency_unit(LatencyUnit::Millis),
+        );
+
     Router::new()
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
         .route("/health", get(handlers::health_check))
@@ -43,7 +63,7 @@ pub fn create_router(state: AppState) -> Router {
             post(handlers::create_user).get(handlers::list_users),
         )
         .route("/users/:id", get(handlers::get_user))
-        .layer(TraceLayer::new_for_http())
+        .layer(trace_layer)
         .layer(cors)
         .layer(TimeoutLayer::with_status_code(
             axum::http::StatusCode::REQUEST_TIMEOUT,

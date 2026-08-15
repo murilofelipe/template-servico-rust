@@ -2,8 +2,15 @@ use template_servico_rust::{config::AppConfig, db, routes, state::AppState, tele
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    telemetry::init_tracing();
     let config = AppConfig::load();
+    telemetry::init_tracing(&config.environment);
+
+    tracing::info!(
+        environment = %config.environment,
+        host = %config.host,
+        port = config.port,
+        "Starting application"
+    );
 
     let pool = db::create_pool(&config.database_url).await?;
     db::run_migrations(&pool).await?;
