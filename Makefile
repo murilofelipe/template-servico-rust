@@ -18,7 +18,7 @@ audit:
 	cargo audit --ignore RUSTSEC-2023-0071
 
 coverage:
-	cargo test --all-targets --all-features
+	cargo tarpaulin --ignore-tests --out Xml --out Html
 
 check: format-check lint audit test
 
