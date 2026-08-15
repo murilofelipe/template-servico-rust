@@ -31,22 +31,21 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Configuração de usuário e grupo não-root (UID/GID 1000)
+# Configuração de usuário e grupo não-root (UID/GID 1000) e diretório da aplicação
 ARG APP_USER=appuser
 ARG APP_UID=1000
 ARG APP_GID=1000
 
 RUN groupadd -g ${APP_GID} ${APP_USER} && \
-    useradd -u ${APP_UID} -g ${APP_USER} -m -d /home/${APP_USER} -s /bin/sh ${APP_USER}
+    useradd -u ${APP_UID} -g ${APP_USER} -m -d /home/${APP_USER} -s /bin/sh ${APP_USER} && \
+    mkdir -p /app && \
+    chown -R ${APP_USER}:${APP_USER} /app
 
 # Diretório da aplicação
 WORKDIR /app
 
-# Cópia do binário compilado com permissões e ownership atribuídos diretamente
+# Cópia do binário compilado com ownership atribuído diretamente
 COPY --from=builder --chown=${APP_USER}:${APP_USER} /usr/src/app/target/release/template-servico-rust /app/template-servico-rust
-
-# Garante permissões adequadas de execução
-RUN chmod 755 /app/template-servico-rust
 
 # Variáveis de ambiente padrão para execução em container
 ENV HOST=0.0.0.0 \

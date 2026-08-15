@@ -14,6 +14,7 @@ CONTAINER_NAME="template-servico-rust-sec-check-$$"
 
 cleanup() {
     local exit_code=$?
+    trap - EXIT INT TERM
     echo ""
     echo "🧹 [Cleanup] Removendo container de teste..."
     docker rm -f "${CONTAINER_NAME}" >/dev/null 2>&1 || true
@@ -74,6 +75,14 @@ docker run -d --name "${CONTAINER_NAME}" \
     -e DATABASE_URL="postgres://postgres:postgres@localhost:5432/template_db" \
     "${IMAGE_NAME}" sleep 60
 
+# Verificar se container está em execução
+IS_RUNNING=$(docker inspect --format='{{.State.Running}}' "${CONTAINER_NAME}" 2>/dev/null || echo "false")
+if [ "${IS_RUNNING}" != "true" ]; then
+    echo "❌ Erro: Container '${CONTAINER_NAME}' falhou ao iniciar ou não está em execução."
+    docker logs "${CONTAINER_NAME}" 2>&1 || true
+    exit 1
+fi
+
 # 4.1 Validar UID e GID dentro do container
 CONTAINER_UID=$(docker exec "${CONTAINER_NAME}" id -u)
 CONTAINER_GID=$(docker exec "${CONTAINER_NAME}" id -g)
@@ -92,7 +101,18 @@ echo "   ✅ Processo em execução é NÃO-ROOT (UID: ${CONTAINER_UID} != 0)."
 
 # 4.2 Validar permissões e ownership do diretório /app e binário
 echo ""
-echo "▶️  [5/5] Verificando ownership e permissões do binário..."
+echo "▶️  [5/5] Verificando ownership e permissões do diretório /app e binário..."
+APP_DIR_OWNER=$(docker exec "${CONTAINER_NAME}" stat -c '%U:%G' /app)
+APP_DIR_PERMS=$(docker exec "${CONTAINER_NAME}" stat -c '%a' /app)
+echo "   - Owner do diretório /app: ${APP_DIR_OWNER}"
+echo "   - Permissões do diretório /app: ${APP_DIR_PERMS}"
+
+if [ "${APP_DIR_OWNER}" != "appuser:appuser" ] && [ "${APP_DIR_OWNER}" != "1000:1000" ]; then
+    echo "❌ Falha de Ownership: Diretório /app pertence a '${APP_DIR_OWNER}' (esperado: appuser:appuser ou 1000:1000)."
+    exit 1
+fi
+echo "   ✅ Ownership do diretório /app está correto (${APP_DIR_OWNER})."
+
 BIN_OWNER=$(docker exec "${CONTAINER_NAME}" stat -c '%U:%G' /app/template-servico-rust)
 BIN_PERMS=$(docker exec "${CONTAINER_NAME}" stat -c '%a' /app/template-servico-rust)
 echo "   - Owner do binário: ${BIN_OWNER}"
@@ -115,5 +135,5 @@ echo "   - ✅ Multi-stage build com cargo-chef funcionando perfeitamente"
 echo "   - ✅ Usuário não-privilegiado (appuser, UID 1000, GID 1000) configurado"
 echo "   - ✅ Runtime executa estritamente sem privilégios de root"
 echo "   - ✅ Porta não-privilegiada segura configurada (3000)"
-echo "   - ✅ Binário e diretório /app com ownership e permissões seguras"
+echo "   - ✅ Diretório /app e binário com ownership (appuser:appuser) e permissões seguras"
 echo "================================================================="
