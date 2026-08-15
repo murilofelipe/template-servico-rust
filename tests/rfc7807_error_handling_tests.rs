@@ -316,7 +316,8 @@ async fn test_rfc7807_unrouted_fallback_404() -> Result<(), Box<dyn std::error::
 }
 
 #[tokio::test]
-async fn test_rfc7807_malformed_json_extractor_rejection() -> Result<(), Box<dyn std::error::Error>> {
+async fn test_rfc7807_malformed_json_extractor_rejection() -> Result<(), Box<dyn std::error::Error>>
+{
     let app = setup_test_app().await?;
     let malformed_raw_json = r#"{"name": "Malformed User", "email": "#;
 
@@ -382,12 +383,17 @@ async fn test_rfc7807_invalid_path_extractor_rejection() -> Result<(), Box<dyn s
 }
 
 #[tokio::test]
-async fn test_rfc7807_unauthorized_and_forbidden_responses() -> Result<(), Box<dyn std::error::Error>> {
+async fn test_rfc7807_unauthorized_and_forbidden_responses(
+) -> Result<(), Box<dyn std::error::Error>> {
     async fn unauth_handler() -> AppResult<String> {
-        Err(AppError::Unauthorized("Invalid or expired bearer token".to_string()))
+        Err(AppError::Unauthorized(
+            "Invalid or expired bearer token".to_string(),
+        ))
     }
     async fn forbidden_handler() -> AppResult<String> {
-        Err(AppError::Forbidden("Insufficient permissions to access this resource".to_string()))
+        Err(AppError::Forbidden(
+            "Insufficient permissions to access this resource".to_string(),
+        ))
     }
 
     let router = Router::new()
@@ -397,7 +403,9 @@ async fn test_rfc7807_unauthorized_and_forbidden_responses() -> Result<(), Box<d
     let (status1, headers1, body1) = send_request(&router, "GET", "/unauth", None).await?;
     assert_eq!(status1, StatusCode::UNAUTHORIZED);
     assert_eq!(
-        headers1.get(header::CONTENT_TYPE).and_then(|v| v.to_str().ok()),
+        headers1
+            .get(header::CONTENT_TYPE)
+            .and_then(|v| v.to_str().ok()),
         Some("application/problem+json")
     );
     assert_eq!(body1["type"], "urn:problem-type:unauthorized");
@@ -407,7 +415,9 @@ async fn test_rfc7807_unauthorized_and_forbidden_responses() -> Result<(), Box<d
     let (status2, headers2, body2) = send_request(&router, "GET", "/forbidden", None).await?;
     assert_eq!(status2, StatusCode::FORBIDDEN);
     assert_eq!(
-        headers2.get(header::CONTENT_TYPE).and_then(|v| v.to_str().ok()),
+        headers2
+            .get(header::CONTENT_TYPE)
+            .and_then(|v| v.to_str().ok()),
         Some("application/problem+json")
     );
     assert_eq!(body2["type"], "urn:problem-type:forbidden");
@@ -416,4 +426,3 @@ async fn test_rfc7807_unauthorized_and_forbidden_responses() -> Result<(), Box<d
 
     Ok(())
 }
-

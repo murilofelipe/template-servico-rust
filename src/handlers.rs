@@ -1,8 +1,4 @@
-use axum::{
-    extract::State,
-    http::StatusCode,
-    Json,
-};
+use axum::{extract::State, http::StatusCode, Json};
 use serde_json::{json, Value};
 use uuid::Uuid;
 
@@ -129,4 +125,3 @@ pub async fn get_user(
 
     Ok(Json(user))
 }
-
