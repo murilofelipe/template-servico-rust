@@ -39,3 +39,6 @@ CLAUDE.md
 AGENTS.md
 plan.md
 docker-compose.yml
+
+# Agent artifacts
+.agents/
