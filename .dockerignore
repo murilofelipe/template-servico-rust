@@ -23,8 +23,9 @@ target/
 logs/
 
 # Database
-.sqlx/
-migrations/
+# Necessario para sqlx build offline
+# .sqlx/
+# migrations/
 
 # Github and workflows
 .github/

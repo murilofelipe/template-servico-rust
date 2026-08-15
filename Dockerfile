@@ -14,6 +14,7 @@ COPY --from=planner /usr/src/app/recipe.json recipe.json
 RUN cargo chef cook --release --recipe-path recipe.json
 # Build da aplicacao (so roda se houver alteracoes no source)
 COPY . .
+ENV SQLX_OFFLINE=true
 RUN cargo build --release --bin template-servico-rust
 
 # Etapa de Runtime
