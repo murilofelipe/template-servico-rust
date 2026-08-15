@@ -81,6 +81,18 @@ fn default_environment() -> AppEnvironment {
     AppEnvironment::Development
 }
 
+fn default_allowed_origins() -> Vec<String> {
+    Vec::new()
+}
+
+#[must_use]
+pub fn parse_allowed_origins(raw: &str) -> Vec<String> {
+    raw.split(',')
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .collect()
+}
+
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct AppConfig {
     pub database_url: String,
@@ -90,6 +102,8 @@ pub struct AppConfig {
     pub host: String,
     #[serde(default = "default_environment")]
     pub environment: AppEnvironment,
+    #[serde(default = "default_allowed_origins")]
+    pub allowed_origins: Vec<String>,
 }
 
 impl AppConfig {
@@ -112,17 +126,32 @@ impl AppConfig {
                 .and_then(|p| p.parse::<u16>().ok())
                 .unwrap_or_else(default_port);
             let host = env::var("HOST").unwrap_or_else(|_| default_host());
+            let allowed_origins = env::var("ALLOWED_ORIGINS")
+                .map(|raw| parse_allowed_origins(&raw))
+                .unwrap_or_default();
 
             AppConfig {
                 database_url,
                 port,
                 host,
                 environment: default_environment(),
+                allowed_origins,
             }
         });
 
         if let Some(env) = env_from_var {
             config.environment = env;
+        }
+
+        if let Ok(origins_str) = env::var("ALLOWED_ORIGINS") {
+            config.allowed_origins = parse_allowed_origins(&origins_str);
+        } else {
+            config.allowed_origins = config
+                .allowed_origins
+                .into_iter()
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+                .collect();
         }
 
         config
@@ -131,7 +160,10 @@ impl AppConfig {
 
 #[cfg(test)]
 mod tests {
-    use super::{default_environment, default_host, default_port, AppConfig, AppEnvironment};
+    use super::{
+        default_allowed_origins, default_environment, default_host, default_port,
+        parse_allowed_origins, AppConfig, AppEnvironment,
+    };
     use std::str::FromStr;
 
     #[test]
@@ -185,11 +217,30 @@ mod tests {
         assert_eq!(default_port(), 3000);
         assert_eq!(default_host(), "0.0.0.0");
         assert_eq!(default_environment(), AppEnvironment::Development);
+        assert_eq!(default_allowed_origins(), Vec::<String>::new());
+    }
+
+    #[test]
+    fn test_parse_allowed_origins() {
+        assert_eq!(
+            parse_allowed_origins("https://example.com"),
+            vec!["https://example.com"]
+        );
+        assert_eq!(
+            parse_allowed_origins("https://a.com, https://b.com ,  https://c.com "),
+            vec!["https://a.com", "https://b.com", "https://c.com"]
+        );
+        assert_eq!(
+            parse_allowed_origins(",https://a.com,,https://b.com,"),
+            vec!["https://a.com", "https://b.com"]
+        );
+        assert_eq!(parse_allowed_origins("   "), Vec::<String>::new());
+        assert_eq!(parse_allowed_origins(""), Vec::<String>::new());
     }
 
     #[test]
     fn test_app_config_deserialization() {
-        let json_data = r#"{"database_url":"postgres://localhost/test","port":8080,"host":"127.0.0.1","environment":"production"}"#;
+        let json_data = r#"{"database_url":"postgres://localhost/test","port":8080,"host":"127.0.0.1","environment":"production","allowed_origins":["https://app.example.com"]}"#;
         let config: Result<AppConfig, _> = serde_json::from_str(json_data);
         assert!(config.is_ok());
         let cfg = config.unwrap_or_else(|_| AppConfig {
@@ -197,10 +248,12 @@ mod tests {
             port: 0,
             host: String::new(),
             environment: AppEnvironment::Development,
+            allowed_origins: Vec::new(),
         });
         assert_eq!(cfg.port, 8080);
         assert_eq!(cfg.host, "127.0.0.1");
         assert_eq!(cfg.environment, AppEnvironment::Production);
+        assert_eq!(cfg.allowed_origins, vec!["https://app.example.com"]);
 
         let json_prod_alias = r#"{"database_url":"postgres://localhost/test","port":8080,"host":"127.0.0.1","environment":"prod"}"#;
         let cfg_alias: AppConfig =
@@ -209,8 +262,10 @@ mod tests {
                 port: 0,
                 host: String::new(),
                 environment: AppEnvironment::Development,
+                allowed_origins: Vec::new(),
             });
         assert_eq!(cfg_alias.environment, AppEnvironment::Production);
+        assert_eq!(cfg_alias.allowed_origins, Vec::<String>::new());
 
         let json_dev_alias = r#"{"database_url":"postgres://localhost/test","port":8080,"host":"127.0.0.1","environment":"dev"}"#;
         let cfg_dev: AppConfig =
@@ -219,7 +274,9 @@ mod tests {
                 port: 0,
                 host: String::new(),
                 environment: AppEnvironment::Production,
+                allowed_origins: Vec::new(),
             });
         assert_eq!(cfg_dev.environment, AppEnvironment::Development);
+        assert_eq!(cfg_dev.allowed_origins, Vec::<String>::new());
     }
 }

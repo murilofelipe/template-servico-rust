@@ -1,10 +1,10 @@
 use axum::{
+    middleware,
     routing::{get, post},
     Router,
 };
 use std::time::Duration;
 use tower_http::{
-    cors::{Any, CorsLayer},
     timeout::TimeoutLayer,
     trace::{DefaultMakeSpan, DefaultOnFailure, DefaultOnRequest, DefaultOnResponse, TraceLayer},
     LatencyUnit,
@@ -16,6 +16,7 @@ use utoipa_swagger_ui::SwaggerUi;
 use crate::{
     handlers,
     models::{CreateUserPayload, User},
+    security::{build_cors_layer, security_headers_middleware},
     state::AppState,
 };
 
@@ -32,10 +33,7 @@ use crate::{
 struct ApiDoc;
 
 pub fn create_router(state: AppState) -> Router {
-    let cors = CorsLayer::new()
-        .allow_origin(Any)
-        .allow_methods(Any)
-        .allow_headers(Any);
+    let cors = build_cors_layer(&state.config);
 
     let trace_layer = TraceLayer::new_for_http()
         .make_span_with(
@@ -63,6 +61,7 @@ pub fn create_router(state: AppState) -> Router {
             post(handlers::create_user).get(handlers::list_users),
         )
         .route("/users/:id", get(handlers::get_user))
+        .layer(middleware::from_fn(security_headers_middleware))
         .layer(trace_layer)
         .layer(cors)
         .layer(TimeoutLayer::with_status_code(

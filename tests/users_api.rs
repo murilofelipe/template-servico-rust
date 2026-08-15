@@ -196,8 +196,11 @@ async fn test_tier2_create_user_empty_name_returns_400_bad_request(
         "email": "emptyname@example.com"
     });
 
-    let (status, _body) = send_request(&app, "POST", "/users", Some(payload)).await?;
+    let (status, body) = send_request(&app, "POST", "/users", Some(payload)).await?;
     assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert_eq!(body["status"], 400);
+    assert_eq!(body["type"], "urn:problem-type:bad-request");
+    assert_eq!(body["title"], "Bad Request");
 
     Ok(())
 }
@@ -211,8 +214,11 @@ async fn test_tier2_create_user_invalid_email_returns_400_bad_request(
         "email": "not-an-email-address"
     });
 
-    let (status, _body) = send_request(&app, "POST", "/users", Some(payload)).await?;
+    let (status, body) = send_request(&app, "POST", "/users", Some(payload)).await?;
     assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert_eq!(body["status"], 400);
+    assert_eq!(body["type"], "urn:problem-type:bad-request");
+    assert_eq!(body["title"], "Bad Request");
 
     Ok(())
 }
@@ -235,8 +241,11 @@ async fn test_tier2_create_user_duplicate_email_returns_409_conflict(
         "email": unique_email
     });
 
-    let (status2, _body2) = send_request(&app, "POST", "/users", Some(payload2)).await?;
+    let (status2, body2) = send_request(&app, "POST", "/users", Some(payload2)).await?;
     assert_eq!(status2, StatusCode::CONFLICT);
+    assert_eq!(body2["status"], 409);
+    assert_eq!(body2["type"], "urn:problem-type:conflict");
+    assert_eq!(body2["title"], "Conflict");
 
     Ok(())
 }
@@ -248,8 +257,11 @@ async fn test_tier2_get_user_non_existent_uuid_returns_404_not_found(
     let non_existent_id = Uuid::new_v4().to_string();
     let uri = format!("/users/{}", non_existent_id);
 
-    let (status, _body) = send_request(&app, "GET", &uri, None).await?;
+    let (status, body) = send_request(&app, "GET", &uri, None).await?;
     assert_eq!(status, StatusCode::NOT_FOUND);
+    assert_eq!(body["status"], 404);
+    assert_eq!(body["type"], "urn:problem-type:not-found");
+    assert_eq!(body["title"], "Not Found");
 
     Ok(())
 }
