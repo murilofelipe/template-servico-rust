@@ -1,4 +1,4 @@
-.PHONY: format format-check lint test coverage check verify-logs db-create db-drop db-migrate db-prepare db-reset
+.PHONY: format format-check lint test coverage check verify-logs verify-security db-create db-drop db-migrate db-prepare db-reset
 
 DATABASE_URL ?= postgres://postgres:postgres@localhost:5432/template_db
 
@@ -24,6 +24,9 @@ check: format-check lint audit test
 
 verify-logs:
 	bash scripts/verify-logging.sh
+
+verify-security:
+	bash scripts/verify-security.sh
 
 
 db-create:

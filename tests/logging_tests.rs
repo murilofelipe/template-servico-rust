@@ -103,6 +103,7 @@ fn test_app_config_json_deserialization() {
         port: 0,
         host: String::new(),
         environment: AppEnvironment::Development,
+        allowed_origins: Vec::new(),
     });
 
     assert_eq!(config.database_url, "postgres://localhost:5432/db");
@@ -121,6 +122,7 @@ fn test_app_config_json_deserialization() {
         port: 0,
         host: String::new(),
         environment: AppEnvironment::Development,
+        allowed_origins: Vec::new(),
     });
     assert_eq!(config_alias.environment, AppEnvironment::Production);
 
@@ -136,6 +138,7 @@ fn test_app_config_json_deserialization() {
             port: 0,
             host: String::new(),
             environment: AppEnvironment::Development,
+            allowed_origins: Vec::new(),
         });
     assert_eq!(config_prod_upper.environment, AppEnvironment::Production);
 
@@ -150,6 +153,7 @@ fn test_app_config_json_deserialization() {
         port: 0,
         host: String::new(),
         environment: AppEnvironment::Production,
+        allowed_origins: Vec::new(),
     });
     assert_eq!(config_dev.environment, AppEnvironment::Development);
 
@@ -164,6 +168,7 @@ fn test_app_config_json_deserialization() {
         port: 0,
         host: String::new(),
         environment: AppEnvironment::Development,
+        allowed_origins: Vec::new(),
     });
     assert_eq!(config_test.environment, AppEnvironment::Test);
 }
@@ -196,6 +201,7 @@ async fn test_routes_middleware_integration() -> Result<(), Box<dyn std::error::
         port: 3000,
         host: "0.0.0.0".to_string(),
         environment: AppEnvironment::Test,
+        allowed_origins: Vec::new(),
     };
 
     let state = template_servico_rust::state::AppState { pool, config };
