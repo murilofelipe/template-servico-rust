@@ -8,8 +8,8 @@ use std::time::Duration;
 /// Returns `SqlxError` if pool creation or connection validation fails.
 pub async fn create_pool(database_url: &str) -> Result<PgPool, SqlxError> {
     PgPoolOptions::new()
-        .max_connections(5)
-        .acquire_timeout(Duration::from_secs(3))
+        .max_connections(10)
+        .acquire_timeout(Duration::from_secs(10))
         .connect(database_url)
         .await
 }
