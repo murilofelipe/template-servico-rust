@@ -1,10 +1,10 @@
 use axum::{
-    middleware,
     routing::{get, post},
     Router,
 };
 use std::time::Duration;
 use tower_http::{
+    cors::{Any, CorsLayer},
     timeout::TimeoutLayer,
     trace::{DefaultMakeSpan, DefaultOnFailure, DefaultOnRequest, DefaultOnResponse, TraceLayer},
     LatencyUnit,
@@ -14,9 +14,9 @@ use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
 use crate::{
+    error::{InvalidParam, ProblemDetails},
     handlers,
     models::{CreateUserPayload, User},
-    security::{build_cors_layer, security_headers_middleware},
     state::AppState,
 };
 
@@ -28,12 +28,15 @@ use crate::{
         handlers::list_users,
         handlers::get_user
     ),
-    components(schemas(User, CreateUserPayload))
+    components(schemas(User, CreateUserPayload, ProblemDetails, InvalidParam))
 )]
 struct ApiDoc;
 
 pub fn create_router(state: AppState) -> Router {
-    let cors = build_cors_layer(&state.config);
+    let cors = CorsLayer::new()
+        .allow_origin(Any)
+        .allow_methods(Any)
+        .allow_headers(Any);
 
     let trace_layer = TraceLayer::new_for_http()
         .make_span_with(
@@ -61,7 +64,7 @@ pub fn create_router(state: AppState) -> Router {
             post(handlers::create_user).get(handlers::list_users),
         )
         .route("/users/:id", get(handlers::get_user))
-        .layer(middleware::from_fn(security_headers_middleware))
+        .fallback(handlers::fallback_not_found)
         .layer(trace_layer)
         .layer(cors)
         .layer(TimeoutLayer::with_status_code(
