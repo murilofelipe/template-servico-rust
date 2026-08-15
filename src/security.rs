@@ -2,7 +2,8 @@ use axum::{
     extract::Request,
     http::{
         header::{
-            REFERRER_POLICY, STRICT_TRANSPORT_SECURITY, X_CONTENT_TYPE_OPTIONS, X_FRAME_OPTIONS,
+            CONTENT_SECURITY_POLICY, REFERRER_POLICY, STRICT_TRANSPORT_SECURITY,
+            X_CONTENT_TYPE_OPTIONS, X_FRAME_OPTIONS,
         },
         HeaderName, HeaderValue,
     },
@@ -14,7 +15,6 @@ use tower_http::cors::{AllowOrigin, Any, CorsLayer};
 use crate::config::AppConfig;
 
 static X_XSS_PROTECTION: HeaderName = HeaderName::from_static("x-xss-protection");
-static CONTENT_SECURITY_POLICY: HeaderName = HeaderName::from_static("content-security-policy");
 static PERMISSIONS_POLICY: HeaderName = HeaderName::from_static("permissions-policy");
 
 /// Builds a `CorsLayer` configured dynamically for the application's environment.

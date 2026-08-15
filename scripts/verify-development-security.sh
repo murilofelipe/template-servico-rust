@@ -131,6 +131,7 @@ check_header "strict-transport-security" "max-age=31536000" "${DEV_HEADERS}" "/h
 check_header "content-security-policy" "default-src 'self'" "${DEV_HEADERS}" "/health"
 check_header "referrer-policy" "strict-origin-when-cross-origin" "${DEV_HEADERS}" "/health"
 check_header "x-xss-protection" "0" "${DEV_HEADERS}" "/health"
+check_header "permissions-policy" "geolocation=\(\)" "${DEV_HEADERS}" "/health"
 
 echo ""
 echo "================================================================="

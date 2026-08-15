@@ -191,6 +191,10 @@ NOT_FOUND_HEADERS=$(curl -s -i "http://127.0.0.1:${PORT}/non-existent-endpoint-4
 check_header "x-content-type-options" "nosniff" "${NOT_FOUND_HEADERS}" "/404"
 check_header "x-frame-options" "DENY" "${NOT_FOUND_HEADERS}" "/404"
 
+# Check on preflight OPTIONS response
+check_header "x-content-type-options" "nosniff" "${PREFLIGHT_ALLOWED}" "OPTIONS preflight"
+check_header "x-frame-options" "DENY" "${PREFLIGHT_ALLOWED}" "OPTIONS preflight"
+
 echo ""
 echo "================================================================="
 echo "🎉 VALIDAÇÃO DE SEGURANÇA EM PRODUÇÃO CONCLUÍDA COM SUCESSO!"

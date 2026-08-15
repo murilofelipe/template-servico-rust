@@ -359,9 +359,74 @@ async fn test_security_headers_present_on_all_responses() -> Result<(), Box<dyn 
         .uri("/users")
         .header(header::CONTENT_TYPE, "application/json")
         .body(Body::from("{ malformed json }"))?;
-    let res6 = app.oneshot(req6).await?;
+    let res6 = app.clone().oneshot(req6).await?;
     assert_eq!(res6.status(), StatusCode::BAD_REQUEST);
     assert_security_headers(res6.headers(), "400 Bad Request");
+
+    // 7. CORS Preflight OPTIONS request
+    let req7 = Request::builder()
+        .method(Method::OPTIONS)
+        .uri("/users")
+        .header(header::ORIGIN, "http://localhost:3000")
+        .header(header::ACCESS_CONTROL_REQUEST_METHOD, "POST")
+        .body(Body::empty())?;
+    let res7 = app.clone().oneshot(req7).await?;
+    assert_eq!(res7.status(), StatusCode::OK);
+    assert_security_headers(res7.headers(), "OPTIONS Preflight");
+
+    // 8. Normal request without Origin header
+    let req8 = Request::builder()
+        .method("GET")
+        .uri("/health")
+        .body(Body::empty())?;
+    let res8 = app.oneshot(req8).await?;
+    assert_security_headers(res8.headers(), "GET /health without Origin");
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_production_request_without_origin_has_security_headers_and_no_cors(
+) -> Result<(), Box<dyn std::error::Error>> {
+    let allowed_origins = vec!["https://app.example.com".to_string()];
+    let state = create_test_state(AppEnvironment::Production, allowed_origins)?;
+    let app = create_router(state);
+
+    let req = Request::builder()
+        .method("GET")
+        .uri("/health")
+        .body(Body::empty())?;
+
+    let res = app.oneshot(req).await?;
+    assert_eq!(res.status(), StatusCode::OK);
+
+    // Security headers must be present
+    assert_eq!(
+        res.headers()
+            .get(header::X_CONTENT_TYPE_OPTIONS)
+            .and_then(|v| v.to_str().ok()),
+        Some("nosniff")
+    );
+    assert_eq!(
+        res.headers()
+            .get(header::X_FRAME_OPTIONS)
+            .and_then(|v| v.to_str().ok()),
+        Some("DENY")
+    );
+    assert_eq!(
+        res.headers()
+            .get(header::STRICT_TRANSPORT_SECURITY)
+            .and_then(|v| v.to_str().ok()),
+        Some("max-age=31536000; includeSubDomains")
+    );
+
+    // CORS headers must not be present when Origin header is absent
+    assert!(
+        res.headers()
+            .get(header::ACCESS_CONTROL_ALLOW_ORIGIN)
+            .is_none(),
+        "Production request without Origin header should not receive Access-Control-Allow-Origin"
+    );
 
     Ok(())
 }
