@@ -27,7 +27,12 @@ use crate::{
         handlers::list_users,
         handlers::get_user
     ),
-    components(schemas(User, CreateUserPayload))
+    components(schemas(
+        User,
+        CreateUserPayload,
+        crate::error::ProblemDetails,
+        crate::error::InvalidParam
+    ))
 )]
 struct ApiDoc;
 
