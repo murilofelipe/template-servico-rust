@@ -1,6 +1,10 @@
 use axum::{
     body::Body,
-    http::{header, StatusCode},
+    extract::{
+        rejection::{JsonRejection, PathRejection},
+        FromRequest, FromRequestParts, Request,
+    },
+    http::{header, request::Parts, StatusCode},
     response::{IntoResponse, Response},
 };
 use serde::{Deserialize, Serialize};
@@ -50,6 +54,7 @@ impl ProblemDetails {
             StatusCode::UNAUTHORIZED => "urn:problem-type:unauthorized",
             StatusCode::FORBIDDEN => "urn:problem-type:forbidden",
             StatusCode::NOT_FOUND => "urn:problem-type:not-found",
+            StatusCode::METHOD_NOT_ALLOWED => "urn:problem-type:method-not-allowed",
             StatusCode::CONFLICT => "urn:problem-type:conflict",
             StatusCode::UNPROCESSABLE_ENTITY => "urn:problem-type:unprocessable-entity",
             StatusCode::INTERNAL_SERVER_ERROR => "urn:problem-type:internal-server-error",
@@ -95,16 +100,44 @@ impl ProblemDetails {
         Self::new(StatusCode::BAD_REQUEST, "Bad Request", detail)
     }
 
+    /// Convenience constructor for 401 Unauthorized problem details.
+    #[must_use]
+    pub fn unauthorized(detail: impl Into<String>) -> Self {
+        Self::new(StatusCode::UNAUTHORIZED, "Unauthorized", detail)
+    }
+
+    /// Convenience constructor for 403 Forbidden problem details.
+    #[must_use]
+    pub fn forbidden(detail: impl Into<String>) -> Self {
+        Self::new(StatusCode::FORBIDDEN, "Forbidden", detail)
+    }
+
     /// Convenience constructor for 404 Not Found problem details.
     #[must_use]
     pub fn not_found(detail: impl Into<String>) -> Self {
         Self::new(StatusCode::NOT_FOUND, "Not Found", detail)
     }
 
+    /// Convenience constructor for 405 Method Not Allowed problem details.
+    #[must_use]
+    pub fn method_not_allowed(detail: impl Into<String>) -> Self {
+        Self::new(StatusCode::METHOD_NOT_ALLOWED, "Method Not Allowed", detail)
+    }
+
     /// Convenience constructor for 409 Conflict problem details.
     #[must_use]
     pub fn conflict(detail: impl Into<String>) -> Self {
         Self::new(StatusCode::CONFLICT, "Conflict", detail)
+    }
+
+    /// Convenience constructor for 422 Unprocessable Entity problem details.
+    #[must_use]
+    pub fn unprocessable_entity(detail: impl Into<String>) -> Self {
+        Self::new(
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "Unprocessable Entity",
+            detail,
+        )
     }
 
     /// Convenience constructor for 500 Internal Server Error problem details.
@@ -169,11 +202,29 @@ pub enum AppError {
     #[error("Validation Error: {0}")]
     ValidationError(String),
 
+    #[error("Validation Error: {detail}")]
+    ValidationFailed {
+        detail: String,
+        invalid_params: Vec<InvalidParam>,
+    },
+
+    #[error("Unauthorized: {0}")]
+    Unauthorized(String),
+
+    #[error("Forbidden: {0}")]
+    Forbidden(String),
+
     #[error("Resource Not Found: {0}")]
     NotFound(String),
 
+    #[error("Method Not Allowed: {0}")]
+    MethodNotAllowed(String),
+
     #[error("Resource Conflict: {0}")]
     Conflict(String),
+
+    #[error("Unprocessable Entity: {0}")]
+    UnprocessableEntity(String),
 
     #[error("Database Error: {0}")]
     Database(#[from] sqlx::Error),
@@ -197,13 +248,42 @@ impl IntoResponse for AppError {
                 ProblemDetails::new(StatusCode::BAD_REQUEST, "Validation Error", detail)
                     .with_type("urn:problem-type:validation-error")
             }
+            AppError::ValidationFailed {
+                detail,
+                invalid_params,
+            } => {
+                tracing::warn!(
+                    detail = %detail,
+                    invalid_params_count = invalid_params.len(),
+                    "Request validation failed with invalid parameters"
+                );
+                ProblemDetails::new(StatusCode::BAD_REQUEST, "Validation Error", detail)
+                    .with_type("urn:problem-type:validation-error")
+                    .with_invalid_params(invalid_params)
+            }
+            AppError::Unauthorized(detail) => {
+                tracing::warn!(detail = %detail, "Unauthorized request");
+                ProblemDetails::unauthorized(detail)
+            }
+            AppError::Forbidden(detail) => {
+                tracing::warn!(detail = %detail, "Forbidden request");
+                ProblemDetails::forbidden(detail)
+            }
             AppError::NotFound(detail) => {
                 tracing::info!(detail = %detail, "Requested resource not found");
                 ProblemDetails::not_found(detail)
             }
+            AppError::MethodNotAllowed(detail) => {
+                tracing::warn!(detail = %detail, "Method not allowed");
+                ProblemDetails::method_not_allowed(detail)
+            }
             AppError::Conflict(detail) => {
                 tracing::warn!(detail = %detail, "Resource conflict occurred");
                 ProblemDetails::conflict(detail)
+            }
+            AppError::UnprocessableEntity(detail) => {
+                tracing::warn!(detail = %detail, "Unprocessable entity");
+                ProblemDetails::unprocessable_entity(detail)
             }
             AppError::Database(err) => {
                 // Check if this is a unique constraint violation (PostgreSQL 23505)
@@ -243,6 +323,102 @@ impl IntoResponse for AppError {
     }
 }
 
+impl From<JsonRejection> for AppError {
+    fn from(rejection: JsonRejection) -> Self {
+        let detail = rejection.body_text();
+        tracing::warn!(rejection = %detail, "Failed to parse JSON request payload");
+        AppError::BadRequest(format!("Failed to parse request JSON: {detail}"))
+    }
+}
+
+impl From<PathRejection> for AppError {
+    fn from(rejection: PathRejection) -> Self {
+        let detail = rejection.body_text();
+        tracing::warn!(rejection = %detail, "Failed to parse path parameter");
+        AppError::BadRequest(format!("Failed to parse URL path parameter: {detail}"))
+    }
+}
+
+/// Custom JSON extractor that returns RFC 7807 `ProblemDetails` on rejection.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct AppJson<T>(pub T);
+
+impl<T> std::ops::Deref for AppJson<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<T> std::ops::DerefMut for AppJson<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl<T> From<T> for AppJson<T> {
+    fn from(inner: T) -> Self {
+        Self(inner)
+    }
+}
+
+#[axum::async_trait]
+impl<S, T> FromRequest<S> for AppJson<T>
+where
+    axum::Json<T>: FromRequest<S, Rejection = JsonRejection>,
+    S: Send + Sync,
+{
+    type Rejection = AppError;
+
+    async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
+        match axum::Json::<T>::from_request(req, state).await {
+            Ok(axum::Json(value)) => Ok(Self(value)),
+            Err(rejection) => Err(AppError::from(rejection)),
+        }
+    }
+}
+
+/// Custom Path extractor that returns RFC 7807 `ProblemDetails` on rejection.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct AppPath<T>(pub T);
+
+impl<T> std::ops::Deref for AppPath<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<T> std::ops::DerefMut for AppPath<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl<T> From<T> for AppPath<T> {
+    fn from(inner: T) -> Self {
+        Self(inner)
+    }
+}
+
+#[axum::async_trait]
+impl<S, T> FromRequestParts<S> for AppPath<T>
+where
+    axum::extract::Path<T>: FromRequestParts<S, Rejection = PathRejection>,
+    S: Send + Sync,
+{
+    type Rejection = AppError;
+
+    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+        match axum::extract::Path::<T>::from_request_parts(parts, state).await {
+            Ok(axum::extract::Path(value)) => Ok(Self(value)),
+            Err(rejection) => Err(AppError::from(rejection)),
+        }
+    }
+}
+
 /// Standard `Result` type alias for application handler return types.
 pub type AppResult<T> = Result<T, AppError>;
 
@@ -277,8 +453,8 @@ mod tests {
                 reason: "Must be a valid email address".to_string(),
             },
             InvalidParam {
-                name: "name".to_string(),
-                reason: "Cannot be blank".to_string(),
+                name: "age".to_string(),
+                reason: "Must be positive".to_string(),
             },
         ]);
 
@@ -288,7 +464,7 @@ mod tests {
         assert_eq!(val["status"], 400);
         assert_eq!(val["invalid_params"].as_array().map(|a| a.len()), Some(2));
         assert_eq!(val["invalid_params"][0]["name"], "email");
-        assert_eq!(val["invalid_params"][1]["name"], "name");
+        assert_eq!(val["invalid_params"][1]["name"], "age");
     }
 
     #[test]
@@ -327,6 +503,28 @@ mod tests {
     }
 
     #[test]
+    fn test_app_error_validation_failed_with_params() {
+        let err = AppError::ValidationFailed {
+            detail: "Validation failed".to_string(),
+            invalid_params: vec![InvalidParam {
+                name: "email".to_string(),
+                reason: "Invalid format".to_string(),
+            }],
+        };
+        let res = err.into_response();
+        assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[test]
+    fn test_app_error_unauthorized_and_forbidden() {
+        let unauth = AppError::Unauthorized("Invalid token".to_string()).into_response();
+        assert_eq!(unauth.status(), StatusCode::UNAUTHORIZED);
+
+        let forbidden = AppError::Forbidden("Access denied".to_string()).into_response();
+        assert_eq!(forbidden.status(), StatusCode::FORBIDDEN);
+    }
+
+    #[test]
     fn test_app_error_not_found_into_response() {
         let err = AppError::NotFound("User 123 not found".to_string());
         let res = err.into_response();
@@ -345,5 +543,13 @@ mod tests {
         let err = AppError::ServiceUnavailable("Database down".to_string());
         let res = err.into_response();
         assert_eq!(res.status(), StatusCode::SERVICE_UNAVAILABLE);
+    }
+
+    #[test]
+    fn test_problem_details_all_constructors() {
+        assert_eq!(ProblemDetails::unauthorized("test").status, 401);
+        assert_eq!(ProblemDetails::forbidden("test").status, 403);
+        assert_eq!(ProblemDetails::method_not_allowed("test").status, 405);
+        assert_eq!(ProblemDetails::unprocessable_entity("test").status, 422);
     }
 }

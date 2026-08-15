@@ -287,3 +287,133 @@ fn test_rfc7807_problem_details_builder_methods() {
         Some("application/problem+json")
     );
 }
+
+#[tokio::test]
+async fn test_rfc7807_unrouted_fallback_404() -> Result<(), Box<dyn std::error::Error>> {
+    let app = setup_test_app().await?;
+    let (status, headers, body) =
+        send_request(&app, "GET", "/non-existent-unmatched-endpoint", None).await?;
+
+    assert_eq!(status, StatusCode::NOT_FOUND);
+    assert_eq!(
+        headers
+            .get(header::CONTENT_TYPE)
+            .and_then(|v| v.to_str().ok()),
+        Some("application/problem+json")
+    );
+    assert_eq!(body["type"], "urn:problem-type:not-found");
+    assert_eq!(body["title"], "Not Found");
+    assert_eq!(body["status"], 404);
+    assert!(
+        body["detail"]
+            .as_str()
+            .unwrap_or_default()
+            .contains("/non-existent-unmatched-endpoint"),
+        "Expected detail to mention the requested endpoint"
+    );
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_rfc7807_malformed_json_extractor_rejection() -> Result<(), Box<dyn std::error::Error>> {
+    let app = setup_test_app().await?;
+    let malformed_raw_json = r#"{"name": "Malformed User", "email": "#;
+
+    let mut req_builder = Request::builder().method("POST").uri("/users");
+    req_builder = req_builder.header(header::CONTENT_TYPE, "application/json");
+    let request = req_builder.body(Body::from(malformed_raw_json.to_string()))?;
+
+    let response = app.clone().oneshot(request).await?;
+    let status = response.status();
+    let headers = response.headers().clone();
+
+    let body_bytes = axum::body::to_bytes(response.into_body(), usize::MAX).await?;
+    let json_val: Value = serde_json::from_slice(&body_bytes)?;
+
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert_eq!(
+        headers
+            .get(header::CONTENT_TYPE)
+            .and_then(|v| v.to_str().ok()),
+        Some("application/problem+json")
+    );
+    assert_eq!(json_val["type"], "urn:problem-type:bad-request");
+    assert_eq!(json_val["title"], "Bad Request");
+    assert_eq!(json_val["status"], 400);
+    assert!(
+        json_val["detail"]
+            .as_str()
+            .unwrap_or_default()
+            .to_lowercase()
+            .contains("json"),
+        "Expected detail to indicate JSON parsing failure"
+    );
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_rfc7807_invalid_path_extractor_rejection() -> Result<(), Box<dyn std::error::Error>> {
+    let app = setup_test_app().await?;
+    let (status, headers, body) =
+        send_request(&app, "GET", "/users/not-a-valid-uuid-format", None).await?;
+
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert_eq!(
+        headers
+            .get(header::CONTENT_TYPE)
+            .and_then(|v| v.to_str().ok()),
+        Some("application/problem+json")
+    );
+    assert_eq!(body["type"], "urn:problem-type:bad-request");
+    assert_eq!(body["title"], "Bad Request");
+    assert_eq!(body["status"], 400);
+    assert!(
+        body["detail"]
+            .as_str()
+            .unwrap_or_default()
+            .to_lowercase()
+            .contains("parameter"),
+        "Expected detail to indicate path parameter error"
+    );
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_rfc7807_unauthorized_and_forbidden_responses() -> Result<(), Box<dyn std::error::Error>> {
+    async fn unauth_handler() -> AppResult<String> {
+        Err(AppError::Unauthorized("Invalid or expired bearer token".to_string()))
+    }
+    async fn forbidden_handler() -> AppResult<String> {
+        Err(AppError::Forbidden("Insufficient permissions to access this resource".to_string()))
+    }
+
+    let router = Router::new()
+        .route("/unauth", get(unauth_handler))
+        .route("/forbidden", get(forbidden_handler));
+
+    let (status1, headers1, body1) = send_request(&router, "GET", "/unauth", None).await?;
+    assert_eq!(status1, StatusCode::UNAUTHORIZED);
+    assert_eq!(
+        headers1.get(header::CONTENT_TYPE).and_then(|v| v.to_str().ok()),
+        Some("application/problem+json")
+    );
+    assert_eq!(body1["type"], "urn:problem-type:unauthorized");
+    assert_eq!(body1["title"], "Unauthorized");
+    assert_eq!(body1["status"], 401);
+
+    let (status2, headers2, body2) = send_request(&router, "GET", "/forbidden", None).await?;
+    assert_eq!(status2, StatusCode::FORBIDDEN);
+    assert_eq!(
+        headers2.get(header::CONTENT_TYPE).and_then(|v| v.to_str().ok()),
+        Some("application/problem+json")
+    );
+    assert_eq!(body2["type"], "urn:problem-type:forbidden");
+    assert_eq!(body2["title"], "Forbidden");
+    assert_eq!(body2["status"], 403);
+
+    Ok(())
+}
+

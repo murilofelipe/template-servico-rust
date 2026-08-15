@@ -1,5 +1,5 @@
 use axum::{
-    extract::{Path, State},
+    extract::State,
     http::StatusCode,
     Json,
 };
@@ -7,7 +7,7 @@ use serde_json::{json, Value};
 use uuid::Uuid;
 
 use crate::{
-    error::{AppError, AppResult},
+    error::{AppError, AppJson, AppPath, AppResult},
     models::{CreateUserPayload, User},
     state::AppState,
 };
@@ -45,7 +45,7 @@ pub async fn health_check(State(state): State<AppState>) -> AppResult<(StatusCod
 )]
 pub async fn create_user(
     State(state): State<AppState>,
-    Json(payload): Json<CreateUserPayload>,
+    AppJson(payload): AppJson<CreateUserPayload>,
 ) -> AppResult<(StatusCode, Json<User>)> {
     let trimmed_name = payload.name.trim();
     if trimmed_name.is_empty() {
@@ -113,7 +113,7 @@ pub async fn list_users(State(state): State<AppState>) -> AppResult<Json<Vec<Use
 )]
 pub async fn get_user(
     State(state): State<AppState>,
-    Path(id): Path<Uuid>,
+    AppPath(id): AppPath<Uuid>,
 ) -> AppResult<Json<User>> {
     let user = sqlx::query_as::<_, User>(
         r#"
@@ -129,3 +129,4 @@ pub async fn get_user(
 
     Ok(Json(user))
 }
+
