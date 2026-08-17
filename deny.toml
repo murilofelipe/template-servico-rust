@@ -2,10 +2,6 @@
 
 # Scanning advisories (RustSec security vulnerabilities)
 [advisories]
-vulnerability = "deny"
-unmaintained = "warn"
-yanked = "deny"
-notice = "warn"
 ignore = [
     # Marvin Attack: potential key recovery through timing sidechannels in rsa 0.9.10.
     # Transitive dependency via sqlx/sha2 ecosystem; no upstream fix currently available.
@@ -14,7 +10,6 @@ ignore = [
 
 # License checks
 [licenses]
-unlicensed = "deny"
 allow = [
     "MIT",
     "Apache-2.0",
@@ -42,7 +37,6 @@ multiple-versions = "warn"
 wildcards = "allow"
 highlight = "all"
 deny = []
-deny-features = []
 skip = []
 skip-tree = []
 
