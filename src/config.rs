@@ -93,6 +93,10 @@ pub fn parse_allowed_origins(raw: &str) -> Vec<String> {
         .collect()
 }
 
+fn default_otel_service_name() -> String {
+    "template-servico-rust".to_string()
+}
+
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct AppConfig {
     pub database_url: String,
@@ -104,6 +108,9 @@ pub struct AppConfig {
     pub environment: AppEnvironment,
     #[serde(default = "default_allowed_origins")]
     pub allowed_origins: Vec<String>,
+    #[serde(default = "default_otel_service_name")]
+    pub otel_service_name: String,
+    pub otlp_endpoint: Option<String>,
 }
 
 impl AppConfig {
@@ -130,12 +137,18 @@ impl AppConfig {
                 .map(|raw| parse_allowed_origins(&raw))
                 .unwrap_or_default();
 
+            let otel_service_name =
+                env::var("OTEL_SERVICE_NAME").unwrap_or_else(|_| default_otel_service_name());
+            let otlp_endpoint = env::var("OTLP_ENDPOINT").ok();
+
             AppConfig {
                 database_url,
                 port,
                 host,
                 environment: default_environment(),
                 allowed_origins,
+                otel_service_name,
+                otlp_endpoint,
             }
         });
 
@@ -249,6 +262,8 @@ mod tests {
             host: String::new(),
             environment: AppEnvironment::Development,
             allowed_origins: Vec::new(),
+            otel_service_name: "template-servico-rust".to_string(),
+            otlp_endpoint: None,
         });
         assert_eq!(cfg.port, 8080);
         assert_eq!(cfg.host, "127.0.0.1");
@@ -263,6 +278,8 @@ mod tests {
                 host: String::new(),
                 environment: AppEnvironment::Development,
                 allowed_origins: Vec::new(),
+                otel_service_name: "template-servico-rust".to_string(),
+                otlp_endpoint: None,
             });
         assert_eq!(cfg_alias.environment, AppEnvironment::Production);
         assert_eq!(cfg_alias.allowed_origins, Vec::<String>::new());
@@ -275,6 +292,8 @@ mod tests {
                 host: String::new(),
                 environment: AppEnvironment::Production,
                 allowed_origins: Vec::new(),
+                otel_service_name: "template-servico-rust".to_string(),
+                otlp_endpoint: None,
             });
         assert_eq!(cfg_dev.environment, AppEnvironment::Development);
         assert_eq!(cfg_dev.allowed_origins, Vec::<String>::new());

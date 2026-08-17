@@ -41,6 +41,8 @@ async fn setup_test_app() -> Result<Router, Box<dyn std::error::Error>> {
         host: "0.0.0.0".to_string(),
         environment: template_servico_rust::config::AppEnvironment::Test,
         allowed_origins: Vec::new(),
+        otel_service_name: "test".to_string(),
+        otlp_endpoint: None,
     };
     let state = template_servico_rust::state::AppState { pool, config };
     let app = template_servico_rust::routes::create_router(state);

@@ -28,6 +28,8 @@ fn create_test_state(
         host: "127.0.0.1".to_string(),
         environment,
         allowed_origins,
+        otel_service_name: "test".to_string(),
+        otlp_endpoint: None,
     };
 
     Ok(AppState { pool, config })
