@@ -8,10 +8,11 @@ use axum::{
 use std::time::Duration;
 use tower_http::{
     timeout::TimeoutLayer,
-    trace::{DefaultMakeSpan, DefaultOnFailure, DefaultOnRequest, DefaultOnResponse, TraceLayer},
+    trace::{DefaultOnFailure, DefaultOnRequest, DefaultOnResponse, TraceLayer},
     LatencyUnit,
 };
 use tracing::Level;
+use tracing_opentelemetry::OpenTelemetrySpanExt;
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
@@ -40,21 +41,42 @@ use crate::{
 )]
 struct ApiDoc;
 
-/// Fallback handler for unmatched routes, returning RFC 7807 Problem Details.
 pub async fn fallback_404_handler(uri: Uri) -> impl IntoResponse {
     tracing::info!(uri = %uri, "Route not found");
     ProblemDetails::not_found(format!("The requested endpoint '{uri}' was not found."))
+}
+
+struct HeaderExtractor<'a>(&'a axum::http::HeaderMap);
+impl<'a> opentelemetry::propagation::Extractor for HeaderExtractor<'a> {
+    fn get(&self, key: &str) -> Option<&str> {
+        self.0.get(key).and_then(|v| v.to_str().ok())
+    }
+    fn keys(&self) -> Vec<&str> {
+        self.0.keys().map(|k| k.as_str()).collect()
+    }
 }
 
 pub fn create_router(state: AppState) -> Router {
     let cors = build_cors_layer(&state.config);
 
     let trace_layer = TraceLayer::new_for_http()
-        .make_span_with(
-            DefaultMakeSpan::new()
-                .level(Level::INFO)
-                .include_headers(false),
-        )
+        .make_span_with(|request: &axum::http::Request<_>| {
+            let parent_context = opentelemetry::global::get_text_map_propagator(|propagator| {
+                propagator.extract(&HeaderExtractor(request.headers()))
+            });
+
+            let span = tracing::info_span!(
+                "http_request",
+                method = %request.method(),
+                uri = %request.uri(),
+                version = ?request.version(),
+                trace_id = tracing::field::Empty,
+            );
+
+            span.set_parent(parent_context);
+
+            span
+        })
         .on_request(DefaultOnRequest::new().level(Level::INFO))
         .on_response(
             DefaultOnResponse::new()

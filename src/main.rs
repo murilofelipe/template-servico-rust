@@ -3,7 +3,11 @@ use template_servico_rust::{config::AppConfig, db, routes, state::AppState, tele
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config = AppConfig::load();
-    telemetry::init_tracing(&config.environment);
+    telemetry::init_tracing(
+        &config.environment,
+        Some(&config.otel_service_name),
+        config.otlp_endpoint.as_deref(),
+    );
 
     tracing::info!(
         environment = %config.environment,
@@ -31,6 +35,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     tracing::info!("HTTP server stopped, closing database pool...");
     pool.close().await;
+
+    if config.otlp_endpoint.is_some() && config.environment.is_production() {
+        opentelemetry::global::shutdown_tracer_provider();
+    }
+
     tracing::info!("Graceful shutdown complete.");
 
     Ok(())
