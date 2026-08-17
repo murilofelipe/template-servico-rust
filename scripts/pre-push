@@ -15,6 +15,12 @@ then
     cargo install cargo-audit
 fi
 
+if ! command -v cargo-deny &> /dev/null
+then
+    echo "📦 cargo-deny não encontrado. Instalando localmente..."
+    cargo install cargo-deny
+fi
+
 # Variável para sqlx rodar offline nos testes (se aplicável futuramente)
 export SQLX_OFFLINE=true
 

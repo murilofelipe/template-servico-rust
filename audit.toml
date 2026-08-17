@@ -1,0 +1,9 @@
+# Configuration for cargo-audit (https://github.com/rustsec/rustsec)
+
+[advisories]
+ignore = [
+    # Marvin Attack: potential key recovery through timing sidechannels in rsa 0.9.10.
+    # Transitive dependency via sqlx/sha2 ecosystem; no upstream fix currently available.
+    "RUSTSEC-2023-0071",
+]
+informational_warnings = ["unmaintained"]

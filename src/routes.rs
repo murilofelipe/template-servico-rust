@@ -1,5 +1,7 @@
 use axum::{
+    http::Uri,
     middleware,
+    response::IntoResponse,
     routing::{get, post},
     Router,
 };
@@ -14,6 +16,7 @@ use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
 use crate::{
+    error::ProblemDetails,
     handlers,
     models::{CreateUserPayload, User},
     security::{build_cors_layer, security_headers_middleware},
@@ -28,9 +31,20 @@ use crate::{
         handlers::list_users,
         handlers::get_user
     ),
-    components(schemas(User, CreateUserPayload))
+    components(schemas(
+        User,
+        CreateUserPayload,
+        crate::error::ProblemDetails,
+        crate::error::InvalidParam
+    ))
 )]
 struct ApiDoc;
+
+/// Fallback handler for unmatched routes, returning RFC 7807 Problem Details.
+pub async fn fallback_404_handler(uri: Uri) -> impl IntoResponse {
+    tracing::info!(uri = %uri, "Route not found");
+    ProblemDetails::not_found(format!("The requested endpoint '{uri}' was not found."))
+}
 
 pub fn create_router(state: AppState) -> Router {
     let cors = build_cors_layer(&state.config);
@@ -61,6 +75,7 @@ pub fn create_router(state: AppState) -> Router {
             post(handlers::create_user).get(handlers::list_users),
         )
         .route("/users/:id", get(handlers::get_user))
+        .fallback(fallback_404_handler)
         .layer(trace_layer)
         .layer(cors)
         .layer(middleware::from_fn(security_headers_middleware))
