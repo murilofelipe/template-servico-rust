@@ -9,6 +9,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         environment = %config.environment,
         host = %config.host,
         port = config.port,
+        allowed_origins = ?config.allowed_origins,
         "Starting application"
     );
 

@@ -1,12 +1,12 @@
 use axum::{
     http::Uri,
+    middleware,
     response::IntoResponse,
     routing::{get, post},
     Router,
 };
 use std::time::Duration;
 use tower_http::{
-    cors::{Any, CorsLayer},
     timeout::TimeoutLayer,
     trace::{DefaultMakeSpan, DefaultOnFailure, DefaultOnRequest, DefaultOnResponse, TraceLayer},
     LatencyUnit,
@@ -19,6 +19,7 @@ use crate::{
     error::ProblemDetails,
     handlers,
     models::{CreateUserPayload, User},
+    security::{build_cors_layer, security_headers_middleware},
     state::AppState,
 };
 
@@ -46,10 +47,7 @@ pub async fn fallback_404_handler(uri: Uri) -> impl IntoResponse {
 }
 
 pub fn create_router(state: AppState) -> Router {
-    let cors = CorsLayer::new()
-        .allow_origin(Any)
-        .allow_methods(Any)
-        .allow_headers(Any);
+    let cors = build_cors_layer(&state.config);
 
     let trace_layer = TraceLayer::new_for_http()
         .make_span_with(
@@ -80,6 +78,7 @@ pub fn create_router(state: AppState) -> Router {
         .fallback(fallback_404_handler)
         .layer(trace_layer)
         .layer(cors)
+        .layer(middleware::from_fn(security_headers_middleware))
         .layer(TimeoutLayer::with_status_code(
             axum::http::StatusCode::REQUEST_TIMEOUT,
             Duration::from_secs(10),

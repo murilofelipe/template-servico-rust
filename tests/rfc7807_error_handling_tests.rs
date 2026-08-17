@@ -34,6 +34,7 @@ async fn setup_test_app() -> Result<Router, Box<dyn std::error::Error>> {
         port: 3000,
         host: "0.0.0.0".to_string(),
         environment: AppEnvironment::Test,
+        allowed_origins: Vec::new(),
     };
     let state = AppState { pool, config };
     Ok(create_router(state))

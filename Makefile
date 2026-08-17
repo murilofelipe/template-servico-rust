@@ -1,4 +1,4 @@
-.PHONY: format format-check lint test audit deny sast coverage check verify-logs verify-sast verify-docker db-create db-drop db-migrate db-prepare db-reset
+.PHONY: format format-check lint test audit deny sast coverage check verify-logs verify-sast verify-docker verify-security db-create db-drop db-migrate db-prepare db-reset
 
 DATABASE_URL ?= postgres://postgres:postgres@localhost:5432/template_db
 
@@ -35,6 +35,9 @@ verify-sast:
 
 verify-docker:
 	bash scripts/verify-docker-security.sh
+
+verify-security:
+	bash scripts/verify-security.sh
 
 db-create:
 	sqlx database create --database-url $(DATABASE_URL)
