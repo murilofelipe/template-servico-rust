@@ -35,6 +35,8 @@ async fn setup_test_app() -> Result<Router, Box<dyn std::error::Error>> {
         host: "0.0.0.0".to_string(),
         environment: AppEnvironment::Test,
         allowed_origins: Vec::new(),
+        otel_service_name: "test".to_string(),
+        otlp_endpoint: None,
     };
     let state = AppState { pool, config };
     Ok(create_router(state))

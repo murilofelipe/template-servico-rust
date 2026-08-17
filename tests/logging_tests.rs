@@ -104,6 +104,8 @@ fn test_app_config_json_deserialization() {
         host: String::new(),
         environment: AppEnvironment::Development,
         allowed_origins: Vec::new(),
+        otel_service_name: "test".to_string(),
+        otlp_endpoint: None,
     });
 
     assert_eq!(config.database_url, "postgres://localhost:5432/db");
@@ -123,6 +125,8 @@ fn test_app_config_json_deserialization() {
         host: String::new(),
         environment: AppEnvironment::Development,
         allowed_origins: Vec::new(),
+        otel_service_name: "test".to_string(),
+        otlp_endpoint: None,
     });
     assert_eq!(config_alias.environment, AppEnvironment::Production);
 
@@ -154,6 +158,8 @@ fn test_app_config_json_deserialization() {
         host: String::new(),
         environment: AppEnvironment::Production,
         allowed_origins: Vec::new(),
+        otel_service_name: "test".to_string(),
+        otlp_endpoint: None,
     });
     assert_eq!(config_dev.environment, AppEnvironment::Development);
 
@@ -169,6 +175,8 @@ fn test_app_config_json_deserialization() {
         host: String::new(),
         environment: AppEnvironment::Development,
         allowed_origins: Vec::new(),
+        otel_service_name: "test".to_string(),
+        otlp_endpoint: None,
     });
     assert_eq!(config_test.environment, AppEnvironment::Test);
 }
@@ -176,13 +184,13 @@ fn test_app_config_json_deserialization() {
 #[test]
 fn test_telemetry_try_init() {
     // Calling try_init_tracing in test environment should not panic
-    let result_dev = try_init_tracing(&AppEnvironment::Development);
+    let result_dev = try_init_tracing(&AppEnvironment::Development, None, None);
     let _ = result_dev;
 
-    let result_prod = try_init_tracing(&AppEnvironment::Production);
+    let result_prod = try_init_tracing(&AppEnvironment::Production, None, None);
     let _ = result_prod;
 
-    let result_test = try_init_tracing(&AppEnvironment::Test);
+    let result_test = try_init_tracing(&AppEnvironment::Test, None, None);
     let _ = result_test;
 }
 
@@ -202,6 +210,8 @@ async fn test_routes_middleware_integration() -> Result<(), Box<dyn std::error::
         host: "0.0.0.0".to_string(),
         environment: AppEnvironment::Test,
         allowed_origins: Vec::new(),
+        otel_service_name: "test".to_string(),
+        otlp_endpoint: None,
     };
 
     let state = template_servico_rust::state::AppState { pool, config };
@@ -279,7 +289,7 @@ fn test_app_environment_serde_roundtrip() {
 
 #[test]
 fn test_init_tracing_function() {
-    template_servico_rust::telemetry::init_tracing(&AppEnvironment::Development);
-    template_servico_rust::telemetry::init_tracing(&AppEnvironment::Production);
-    template_servico_rust::telemetry::init_tracing(&AppEnvironment::Test);
+    template_servico_rust::telemetry::init_tracing(&AppEnvironment::Development, None, None);
+    template_servico_rust::telemetry::init_tracing(&AppEnvironment::Production, None, None);
+    template_servico_rust::telemetry::init_tracing(&AppEnvironment::Test, None, None);
 }
