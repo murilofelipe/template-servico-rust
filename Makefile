@@ -38,6 +38,7 @@ verify-docker:
 
 verify-security:
 	bash scripts/verify-security.sh
+
 db-create:
 	sqlx database create --database-url $(DATABASE_URL)
 
