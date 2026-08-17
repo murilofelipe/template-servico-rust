@@ -448,3 +448,111 @@ fn test_parse_allowed_origins_edge_cases() {
     assert_eq!(parse_allowed_origins(""), Vec::<String>::new());
     assert_eq!(parse_allowed_origins("   \n\t  "), Vec::<String>::new());
 }
+
+#[tokio::test]
+async fn test_production_cors_ports_and_exact_match() -> Result<(), Box<dyn std::error::Error>> {
+    let allowed_origins = vec!["http://localhost:8080".to_string()];
+    let state = create_test_state(AppEnvironment::Production, allowed_origins)?;
+    let app = create_router(state);
+
+    // Exact port match: http://localhost:8080 -> Allowed
+    let req_match = Request::builder()
+        .method("GET")
+        .uri("/health")
+        .header(header::ORIGIN, "http://localhost:8080")
+        .body(Body::empty())?;
+    let res_match = app.clone().oneshot(req_match).await?;
+    assert_eq!(
+        res_match
+            .headers()
+            .get(header::ACCESS_CONTROL_ALLOW_ORIGIN)
+            .and_then(|v| v.to_str().ok()),
+        Some("http://localhost:8080")
+    );
+
+    // Different port: http://localhost:3000 -> Blocked
+    let req_diff_port = Request::builder()
+        .method("GET")
+        .uri("/health")
+        .header(header::ORIGIN, "http://localhost:3000")
+        .body(Body::empty())?;
+    let res_diff_port = app.clone().oneshot(req_diff_port).await?;
+    assert!(
+        res_diff_port
+            .headers()
+            .get(header::ACCESS_CONTROL_ALLOW_ORIGIN)
+            .is_none(),
+        "Origin with different port should not be allowed"
+    );
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_production_cors_malformed_origin_recovery() -> Result<(), Box<dyn std::error::Error>>
+{
+    // List includes an invalid header value containing non-ASCII / control chars, alongside a valid origin
+    let allowed_origins = vec![
+        "https://valid-service.internal".to_string(),
+        "invalid origin with spaces and \n newline".to_string(),
+    ];
+    let state = create_test_state(AppEnvironment::Production, allowed_origins)?;
+    let app = create_router(state);
+
+    // Valid origin in list works properly
+    let req_valid = Request::builder()
+        .method("GET")
+        .uri("/health")
+        .header(header::ORIGIN, "https://valid-service.internal")
+        .body(Body::empty())?;
+    let res_valid = app.clone().oneshot(req_valid).await?;
+    assert_eq!(
+        res_valid
+            .headers()
+            .get(header::ACCESS_CONTROL_ALLOW_ORIGIN)
+            .and_then(|v| v.to_str().ok()),
+        Some("https://valid-service.internal")
+    );
+
+    // Unlisted origin blocked
+    let req_unlisted = Request::builder()
+        .method("GET")
+        .uri("/health")
+        .header(header::ORIGIN, "https://other.com")
+        .body(Body::empty())?;
+    let res_unlisted = app.oneshot(req_unlisted).await?;
+    assert!(res_unlisted
+        .headers()
+        .get(header::ACCESS_CONTROL_ALLOW_ORIGIN)
+        .is_none());
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_production_cors_vary_header_behavior() -> Result<(), Box<dyn std::error::Error>> {
+    let allowed_origins = vec!["https://app.example.com".to_string()];
+    let state = create_test_state(AppEnvironment::Production, allowed_origins)?;
+    let app = create_router(state);
+
+    let req = Request::builder()
+        .method("GET")
+        .uri("/health")
+        .header(header::ORIGIN, "https://app.example.com")
+        .body(Body::empty())?;
+
+    let res = app.oneshot(req).await?;
+    assert_eq!(res.status(), StatusCode::OK);
+
+    // When dynamic CORS origin list is used, Vary header should be present
+    let vary_header = res
+        .headers()
+        .get(header::VARY)
+        .and_then(|v| v.to_str().ok());
+    assert!(
+        vary_header.is_some(),
+        "Expected Vary header on CORS request with dynamic origin list"
+    );
+
+    Ok(())
+}
