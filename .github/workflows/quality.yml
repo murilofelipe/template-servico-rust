@@ -58,7 +58,7 @@ jobs:
       uses: taiki-e/install-action@cargo-tarpaulin
 
     - name: Generate Coverage Report
-      run: make coverage
+      run: make coverage-check
 
     - name: Upload Coverage HTML Artifact
       uses: actions/upload-artifact@v4
