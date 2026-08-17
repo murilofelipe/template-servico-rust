@@ -143,6 +143,8 @@ fn test_app_config_json_deserialization() {
             host: String::new(),
             environment: AppEnvironment::Development,
             allowed_origins: Vec::new(),
+            otel_service_name: "test".to_string(),
+            otlp_endpoint: None,
         });
     assert_eq!(config_prod_upper.environment, AppEnvironment::Production);
 
