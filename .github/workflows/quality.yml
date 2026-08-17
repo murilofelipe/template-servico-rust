@@ -43,8 +43,13 @@ jobs:
     - name: Linting (cargo clippy)
       run: make lint
 
-    - name: Análise de Segurança (cargo audit)
-      run: cargo install cargo-audit && cargo audit --ignore RUSTSEC-2023-0071
+    - name: Setup SAST Tools (cargo-audit & cargo-deny)
+      uses: taiki-e/install-action@v2
+      with:
+        tool: cargo-audit,cargo-deny
+
+    - name: Análise de Segurança (SAST)
+      run: make sast
       
     - name: Run tests
       run: make test

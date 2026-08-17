@@ -1,4 +1,4 @@
-.PHONY: format format-check lint test coverage check verify-logs verify-docker db-create db-drop db-migrate db-prepare db-reset
+.PHONY: format format-check lint test audit deny sast coverage check verify-logs verify-sast verify-docker db-create db-drop db-migrate db-prepare db-reset
 
 DATABASE_URL ?= postgres://postgres:postgres@localhost:5432/template_db
 
@@ -17,17 +17,24 @@ test:
 audit:
 	cargo audit --ignore RUSTSEC-2023-0071
 
+deny:
+	cargo deny check
+
+sast: audit deny
+
 coverage:
 	cargo tarpaulin --ignore-tests --out Xml --out Html
 
-check: format-check lint audit test
+check: format-check lint sast test
 
 verify-logs:
 	bash scripts/verify-logging.sh
 
+verify-sast:
+	bash scripts/verify-sast.sh
+
 verify-docker:
 	bash scripts/verify-docker-security.sh
-
 
 db-create:
 	sqlx database create --database-url $(DATABASE_URL)
