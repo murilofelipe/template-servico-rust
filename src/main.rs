@@ -52,7 +52,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let address = format!("{}:{}", config.host, config.port);
     let listener = tokio::net::TcpListener::bind(&address).await?;
     tracing::info!("Server running on http://{}", address);
-    
+
     axum::serve(listener, app)
         .with_graceful_shutdown(shutdown_signal())
         .await?;

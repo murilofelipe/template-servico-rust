@@ -4,3 +4,8 @@
 # Rust
 /target
 Cargo.lock
+
+# Coverage reports
+tarpaulin-report.html
+cobertura.xml
+lcov.info
