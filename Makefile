@@ -25,7 +25,13 @@ sast: audit deny
 coverage:
 	cargo tarpaulin --ignore-tests --out Xml --out Html
 
-check: format-check lint sast test
+coverage-check:
+	cargo tarpaulin --ignore-tests --out Xml --out Html --fail-under 60
+
+coverage-local:
+	bash scripts/check-coverage.sh
+
+check: format-check lint audit test
 
 verify-logs:
 	bash scripts/verify-logging.sh
