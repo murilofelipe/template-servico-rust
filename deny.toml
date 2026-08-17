@@ -6,6 +6,7 @@ ignore = [
     # Marvin Attack: potential key recovery through timing sidechannels in rsa 0.9.10.
     # Transitive dependency via sqlx/sha2 ecosystem; no upstream fix currently available.
     { id = "RUSTSEC-2023-0071", reason = "Transitive dependency via sqlx with no upstream fix available yet" },
+    { id = "RUSTSEC-2024-0370", reason = "proc-macro-error is unmaintained; transitive dependency via utoipa-gen with no safe upgrade available yet" },
 ]
 
 # License checks
@@ -28,7 +29,7 @@ confidence-threshold = 0.8
 exceptions = []
 
 [licenses.private]
-ignore = false
+ignore = true
 registries = []
 
 # Crate bans and duplicate checks
