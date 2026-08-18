@@ -320,4 +320,13 @@ mod tests {
         assert_eq!(cfg_dev.environment, AppEnvironment::Development);
         assert_eq!(cfg_dev.allowed_origins, Vec::<String>::new());
     }
+
+    #[test]
+    fn test_app_config_load() {
+        // This will at least run the AppConfig::load function for coverage.
+        // It's safe to run concurrently because it only reads env vars and .env
+        let config = AppConfig::load();
+        // Just assert some defaults if not overridden by the local environment.
+        assert!(!config.database_url.is_empty());
+    }
 }
