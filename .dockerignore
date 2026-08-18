@@ -1,0 +1,51 @@
+# Version control
+.git/
+.gitignore
+
+# Rust
+target/
+**/*.rs.bk
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# IDEs and OS
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Logs
+*.log
+logs/
+
+# Database
+# Necessario para sqlx build offline
+# .sqlx/
+# migrations/
+
+# Github and workflows
+.github/
+
+# Docs and scripts
+docs/
+scripts/
+Makefile
+README.md
+CLAUDE.md
+AGENTS.md
+plan.md
+docker-compose.yml
+
+# Test and coverage artifacts
+tarpaulin-report.*
+*.profraw
+*.profdata
+
+# Agent artifacts
+.agents/
+.aiignore
+.cargo/

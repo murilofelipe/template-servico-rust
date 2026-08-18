@@ -1,0 +1,40 @@
+name: Versionamento e Commits
+
+on:
+  pull_request:
+    branches:
+      - main
+      - 'release/**'
+      - develop
+
+permissions:
+  contents: read
+
+jobs:
+  commitlint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Buscar branch base
+        run: git fetch --no-tags origin "${{ github.base_ref }}"
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Conventional Commits (commitlint)
+        run: |
+          npm install --no-save --no-package-lock --no-audit --no-fund \
+            @commitlint/cli@19 @commitlint/config-conventional@19
+          
+          # Criando o arquivo de configuração para garantir que ele entenda o preset
+          echo "module.exports = {extends: ['@commitlint/config-conventional']}" > commitlint.config.js
+          
+          npx --no-install commitlint \
+            --config commitlint.config.js \
+            --from "origin/${{ github.base_ref }}" \
+            --to "${{ github.event.pull_request.head.sha }}"

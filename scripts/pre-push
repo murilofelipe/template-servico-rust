@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+#
+# pre-push hook: Runs format, lint, audit, and tests before pushing to remote.
+# Prevents pushing broken code.
+
+echo "=========================================="
+echo "🚀 Executando validações locais (Shift Left)..."
+echo "=========================================="
+
+export PATH="$HOME/.cargo/bin:$PATH"
+
+if ! command -v cargo-audit &> /dev/null
+then
+    echo "📦 cargo-audit não encontrado. Instalando localmente..."
+    cargo install cargo-audit
+fi
+
+if ! command -v cargo-deny &> /dev/null
+then
+    echo "📦 cargo-deny não encontrado. Instalando localmente..."
+    cargo install cargo-deny
+fi
+
+# Variável para sqlx rodar offline nos testes (se aplicável futuramente)
+export SQLX_OFFLINE=true
+
+echo "🐳 Resetando e subindo banco de dados de testes via docker compose..."
+docker compose down -v
+docker compose up -d db
+
+echo "⏳ Aguardando PostgreSQL aceitar conexões..."
+for i in {1..15}; do
+  if docker compose exec -T db pg_isready -U postgres -d template_servico_rust_test >/dev/null 2>&1; then
+    break
+  fi
+  sleep 1
+done
+
+export DATABASE_URL="postgres://postgres:postgres@localhost:5432/template_servico_rust_test"
+
+# Executa os testes de integração de forma sequencial para não estourar 
+# o limite de conexões do postgres local (devido a n pools simultâneos)
+export RUST_TEST_THREADS=1
+
+# Run the 'check' target from Makefile
+make check
+
+# Capture the exit code
+EXIT_CODE=$?
+
+if [ $EXIT_CODE -ne 0 ]; then
+    echo "=========================================="
+    echo "❌ FALHA: Validações locais (pre-push) falharam."
+    echo "⚠️  O push foi abortado. Corrija os erros acima antes de tentar novamente."
+    echo "=========================================="
+    exit 1
+fi
+
+echo "✅ Sucesso! Código formatado, testado e seguro. Prosseguindo com o push..."
+exit 0

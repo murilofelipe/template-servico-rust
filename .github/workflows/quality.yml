@@ -1,0 +1,75 @@
+name: Code Quality and Metrics
+
+on:
+  push:
+    branches: [ "main", "develop" ]
+  pull_request:
+    branches: [ "main", "develop" ]
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: template_servico_rust_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/template_servico_rust_test
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        components: rustfmt, clippy
+        
+    - name: Cache dependencies
+      uses: Swatinem/rust-cache@v2
+
+    - name: Formatação (cargo fmt)
+      run: make format-check
+
+    - name: Linting (cargo clippy)
+      run: make lint
+
+    - name: Setup SAST Tools (cargo-audit & cargo-deny)
+      uses: taiki-e/install-action@v2
+      with:
+        tool: cargo-audit,cargo-deny
+
+    - name: Análise de Segurança (SAST)
+      run: make sast
+      
+    - name: Run tests
+      run: make test
+
+    - name: Setup Code Coverage (tarpaulin)
+      uses: taiki-e/install-action@cargo-tarpaulin
+
+    - name: Generate Coverage Report
+      run: make coverage-check
+
+    - name: Upload Coverage HTML Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-coverage-report
+        path: tarpaulin-report.html
+
+    - name: Setup Node (Para rodar o jscpd)
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    - name: Checagem de Duplicação (jscpd)
+      run: npx --yes jscpd@5.0.14 src --threshold 5
