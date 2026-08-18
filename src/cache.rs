@@ -40,8 +40,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_cache_initialization_error() {
-        // Invalid URL to trigger RedisError
-        let res = RedisCache::new("redis://invalid:9999").await;
+        // Invalid schema to trigger RedisError immediately without hanging
+        let res = RedisCache::new("invalid://localhost:9999").await;
         assert!(res.is_err());
     }
 }
