@@ -209,8 +209,10 @@ mod tests {
                 jwks_url: None,
                 jwt_audience: None,
                 jwt_issuer: None,
+                redis_url: None,
             },
             jwks_cache,
+            redis_cache: None,
         }
     }
 

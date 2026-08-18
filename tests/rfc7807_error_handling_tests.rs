@@ -40,11 +40,13 @@ async fn setup_test_app() -> Result<Router, Box<dyn std::error::Error>> {
         jwks_url: None,
         jwt_audience: None,
         jwt_issuer: None,
+        redis_url: None,
     };
     let state = AppState {
         pool,
         config,
         jwks_cache: None,
+        redis_cache: None,
     };
     Ok(create_router(state))
 }

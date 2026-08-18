@@ -29,6 +29,7 @@ jsonwebtoken = "9"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 axum-prometheus = "0.7"
 metrics-exporter-prometheus = "0.15"
+redis = { version = "0.27", features = ["tokio-comp", "connection-manager"] }
 
 [dev-dependencies]
 tower = { version = "0.5", features = ["util"] }

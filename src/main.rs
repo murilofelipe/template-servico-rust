@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use template_servico_rust::{
-    auth::JwksCache, config::AppConfig, db, routes, state::AppState, telemetry,
+    auth::JwksCache, cache::RedisCache, config::AppConfig, db, routes, state::AppState, telemetry,
 };
 
 #[tokio::main]
@@ -28,10 +28,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .as_ref()
         .map(|url| Arc::new(JwksCache::new(url.clone())));
 
+    let redis_cache = match &config.redis_url {
+        Some(url) => {
+            let cache = RedisCache::new(url).await?;
+            Some(Arc::new(cache))
+        }
+        None => None,
+    };
+
     let app_state = AppState {
         pool: pool.clone(),
         config: config.clone(),
         jwks_cache,
+        redis_cache,
     };
     let app = routes::create_router(app_state);
 

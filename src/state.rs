@@ -11,4 +11,5 @@ pub struct AppState {
     /// Cache de JWKS para validação de JWT. `None` quando `JWKS_URL` não está configurada
     /// (middleware JWT passa de forma transparente).
     pub jwks_cache: Option<Arc<JwksCache>>,
+    pub redis_cache: Option<Arc<crate::cache::RedisCache>>,
 }
