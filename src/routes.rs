@@ -5,6 +5,9 @@ use axum::{
     routing::{get, post},
     Router,
 };
+use axum_prometheus::PrometheusMetricLayer;
+use metrics_exporter_prometheus::PrometheusHandle;
+use std::sync::OnceLock;
 use std::time::Duration;
 use tower_http::{
     timeout::TimeoutLayer,
@@ -57,6 +60,10 @@ impl<'a> opentelemetry::propagation::Extractor for HeaderExtractor<'a> {
     }
 }
 
+/// Recorder global do Prometheus — instalado apenas uma vez para evitar pânico em testes
+/// onde `create_router` é chamado múltiplas vezes no mesmo processo.
+static PROMETHEUS_HANDLE: OnceLock<PrometheusHandle> = OnceLock::new();
+
 pub fn create_router(state: AppState) -> Router {
     let cors = build_cors_layer(&state.config);
 
@@ -102,15 +109,28 @@ pub fn create_router(state: AppState) -> Router {
             jwt_auth_middleware,
         ));
 
+    // Inicializa o recorder do Prometheus apenas uma vez (OnceLock).
+    // Chamadas subsequentes (e.g. em testes) reutilizam o handle existente e criam
+    // um novo layer via Default, que NÃO tenta reinstalar o recorder global.
+    let metric_handle = PROMETHEUS_HANDLE
+        .get_or_init(|| {
+            let (_, h) = PrometheusMetricLayer::pair();
+            h
+        })
+        .clone();
+    let prometheus_layer = PrometheusMetricLayer::default();
+
     // Rotas públicas (sem autenticação)
     let public_routes = Router::new()
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
-        .route("/health", get(handlers::health_check));
+        .route("/health", get(handlers::health_check))
+        .route("/metrics", get(|| async move { metric_handle.render() }));
 
     Router::new()
         .merge(public_routes)
         .merge(protected_routes)
         .fallback(fallback_404_handler)
+        .layer(prometheus_layer)
         .layer(trace_layer)
         .layer(cors)
         .layer(middleware::from_fn(security_headers_middleware))
