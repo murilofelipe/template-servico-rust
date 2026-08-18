@@ -33,12 +33,14 @@ fn create_test_state(
         jwks_url: None,
         jwt_audience: None,
         jwt_issuer: None,
+        redis_url: None,
     };
 
     Ok(AppState {
         pool,
         config,
         jwks_cache: None,
+        redis_cache: None,
     })
 }
 

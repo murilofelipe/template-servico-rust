@@ -116,8 +116,9 @@ pub struct AppConfig {
     pub jwks_url: Option<String>,
     /// Audience esperado no JWT (campo `aud`). Opcional.
     pub jwt_audience: Option<String>,
-    /// Issuer esperado no JWT (campo `iss`). Opcional.
     pub jwt_issuer: Option<String>,
+    #[serde(default)]
+    pub redis_url: Option<String>,
 }
 
 impl AppConfig {
@@ -150,6 +151,7 @@ impl AppConfig {
             let jwks_url = env::var("JWKS_URL").ok();
             let jwt_audience = env::var("JWT_AUDIENCE").ok();
             let jwt_issuer = env::var("JWT_ISSUER").ok();
+            let redis_url = env::var("REDIS_URL").ok();
 
             AppConfig {
                 database_url,
@@ -162,6 +164,7 @@ impl AppConfig {
                 jwks_url,
                 jwt_audience,
                 jwt_issuer,
+                redis_url,
             }
         });
 
@@ -280,6 +283,7 @@ mod tests {
             jwks_url: None,
             jwt_audience: None,
             jwt_issuer: None,
+            redis_url: None,
         });
         assert_eq!(cfg.port, 8080);
         assert_eq!(cfg.host, "127.0.0.1");
@@ -299,6 +303,7 @@ mod tests {
                 jwks_url: None,
                 jwt_audience: None,
                 jwt_issuer: None,
+                redis_url: None,
             });
         assert_eq!(cfg_alias.environment, AppEnvironment::Production);
         assert_eq!(cfg_alias.allowed_origins, Vec::<String>::new());
@@ -316,6 +321,7 @@ mod tests {
                 jwks_url: None,
                 jwt_audience: None,
                 jwt_issuer: None,
+                redis_url: None,
             });
         assert_eq!(cfg_dev.environment, AppEnvironment::Development);
         assert_eq!(cfg_dev.allowed_origins, Vec::<String>::new());

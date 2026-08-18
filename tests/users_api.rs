@@ -46,11 +46,13 @@ async fn setup_test_app() -> Result<Router, Box<dyn std::error::Error>> {
         jwks_url: None,
         jwt_audience: None,
         jwt_issuer: None,
+        redis_url: None,
     };
     let state = template_servico_rust::state::AppState {
         pool,
         config,
         jwks_cache: None,
+        redis_cache: None,
     };
     let app = template_servico_rust::routes::create_router(state);
 
