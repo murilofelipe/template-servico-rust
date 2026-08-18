@@ -5,6 +5,7 @@ use axum::{
     routing::{get, post},
     Router,
 };
+use axum_prometheus::PrometheusMetricLayer;
 use std::time::Duration;
 use tower_http::{
     timeout::TimeoutLayer,
@@ -103,14 +104,17 @@ pub fn create_router(state: AppState) -> Router {
         ));
 
     // Rotas públicas (sem autenticação)
+    let (prometheus_layer, metric_handle) = PrometheusMetricLayer::pair();
     let public_routes = Router::new()
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
-        .route("/health", get(handlers::health_check));
+        .route("/health", get(handlers::health_check))
+        .route("/metrics", get(|| async move { metric_handle.render() }));
 
     Router::new()
         .merge(public_routes)
         .merge(protected_routes)
         .fallback(fallback_404_handler)
+        .layer(prometheus_layer)
         .layer(trace_layer)
         .layer(cors)
         .layer(middleware::from_fn(security_headers_middleware))
