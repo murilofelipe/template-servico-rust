@@ -1,4 +1,8 @@
-use template_servico_rust::{config::AppConfig, db, routes, state::AppState, telemetry};
+use std::sync::Arc;
+
+use template_servico_rust::{
+    auth::JwksCache, config::AppConfig, db, routes, state::AppState, telemetry,
+};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -19,9 +23,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let pool = db::create_pool(&config.database_url).await?;
     db::run_migrations(&pool).await?;
 
+    let jwks_cache = config
+        .jwks_url
+        .as_ref()
+        .map(|url| Arc::new(JwksCache::new(url.clone())));
+
     let app_state = AppState {
         pool: pool.clone(),
         config: config.clone(),
+        jwks_cache,
     };
     let app = routes::create_router(app_state);
 

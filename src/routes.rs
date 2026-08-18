@@ -17,6 +17,7 @@ use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
 use crate::{
+    auth::jwt_auth_middleware,
     error::ProblemDetails,
     handlers,
     models::{CreateUserPayload, User},
@@ -89,14 +90,26 @@ pub fn create_router(state: AppState) -> Router {
                 .latency_unit(LatencyUnit::Millis),
         );
 
-    Router::new()
-        .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
-        .route("/health", get(handlers::health_check))
+    // Rotas protegidas por JWT (opt-in: transparente se JWKS_URL não configurada)
+    let protected_routes = Router::new()
         .route(
             "/users",
             post(handlers::create_user).get(handlers::list_users),
         )
         .route("/users/:id", get(handlers::get_user))
+        .route_layer(middleware::from_fn_with_state(
+            state.clone(),
+            jwt_auth_middleware,
+        ));
+
+    // Rotas públicas (sem autenticação)
+    let public_routes = Router::new()
+        .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
+        .route("/health", get(handlers::health_check));
+
+    Router::new()
+        .merge(public_routes)
+        .merge(protected_routes)
         .fallback(fallback_404_handler)
         .layer(trace_layer)
         .layer(cors)

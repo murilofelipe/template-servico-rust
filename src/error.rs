@@ -546,6 +546,50 @@ mod tests {
     }
 
     #[test]
+    fn test_app_error_validation_error_into_response() {
+        let err = AppError::ValidationError("Bad data".to_string());
+        let res = err.into_response();
+        assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[test]
+    fn test_app_error_method_not_allowed_into_response() {
+        let err = AppError::MethodNotAllowed("GET only".to_string());
+        let res = err.into_response();
+        assert_eq!(res.status(), StatusCode::METHOD_NOT_ALLOWED);
+    }
+
+    #[test]
+    fn test_app_error_unprocessable_entity_into_response() {
+        let err = AppError::UnprocessableEntity("Unprocessable".to_string());
+        let res = err.into_response();
+        assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    }
+
+    #[test]
+    fn test_app_error_internal_into_response() {
+        let err = AppError::Internal("Internal boom".to_string());
+        let res = err.into_response();
+        assert_eq!(res.status(), StatusCode::INTERNAL_SERVER_ERROR);
+    }
+
+    #[test]
+    fn test_app_error_database_unique_violation() {
+        let err = AppError::Database(sqlx::Error::Protocol(
+            "unique constraint violation".to_string(),
+        ));
+        let res = err.into_response();
+        assert_eq!(res.status(), StatusCode::CONFLICT);
+    }
+
+    #[test]
+    fn test_app_error_database_other() {
+        let err = AppError::Database(sqlx::Error::RowNotFound);
+        let res = err.into_response();
+        assert_eq!(res.status(), StatusCode::INTERNAL_SERVER_ERROR);
+    }
+
+    #[test]
     fn test_problem_details_all_constructors() {
         assert_eq!(ProblemDetails::unauthorized("test").status, 401);
         assert_eq!(ProblemDetails::forbidden("test").status, 403);

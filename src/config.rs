@@ -111,6 +111,13 @@ pub struct AppConfig {
     #[serde(default = "default_otel_service_name")]
     pub otel_service_name: String,
     pub otlp_endpoint: Option<String>,
+    /// URL do endpoint JWKS para validação de tokens JWT (ex: https://auth.example.com/.well-known/jwks.json).
+    /// Se não configurado, o middleware JWT é transparente.
+    pub jwks_url: Option<String>,
+    /// Audience esperado no JWT (campo `aud`). Opcional.
+    pub jwt_audience: Option<String>,
+    /// Issuer esperado no JWT (campo `iss`). Opcional.
+    pub jwt_issuer: Option<String>,
 }
 
 impl AppConfig {
@@ -140,6 +147,9 @@ impl AppConfig {
             let otel_service_name =
                 env::var("OTEL_SERVICE_NAME").unwrap_or_else(|_| default_otel_service_name());
             let otlp_endpoint = env::var("OTLP_ENDPOINT").ok();
+            let jwks_url = env::var("JWKS_URL").ok();
+            let jwt_audience = env::var("JWT_AUDIENCE").ok();
+            let jwt_issuer = env::var("JWT_ISSUER").ok();
 
             AppConfig {
                 database_url,
@@ -149,6 +159,9 @@ impl AppConfig {
                 allowed_origins,
                 otel_service_name,
                 otlp_endpoint,
+                jwks_url,
+                jwt_audience,
+                jwt_issuer,
             }
         });
 
@@ -264,6 +277,9 @@ mod tests {
             allowed_origins: Vec::new(),
             otel_service_name: "template-servico-rust".to_string(),
             otlp_endpoint: None,
+            jwks_url: None,
+            jwt_audience: None,
+            jwt_issuer: None,
         });
         assert_eq!(cfg.port, 8080);
         assert_eq!(cfg.host, "127.0.0.1");
@@ -280,6 +296,9 @@ mod tests {
                 allowed_origins: Vec::new(),
                 otel_service_name: "template-servico-rust".to_string(),
                 otlp_endpoint: None,
+                jwks_url: None,
+                jwt_audience: None,
+                jwt_issuer: None,
             });
         assert_eq!(cfg_alias.environment, AppEnvironment::Production);
         assert_eq!(cfg_alias.allowed_origins, Vec::<String>::new());
@@ -294,8 +313,20 @@ mod tests {
                 allowed_origins: Vec::new(),
                 otel_service_name: "template-servico-rust".to_string(),
                 otlp_endpoint: None,
+                jwks_url: None,
+                jwt_audience: None,
+                jwt_issuer: None,
             });
         assert_eq!(cfg_dev.environment, AppEnvironment::Development);
         assert_eq!(cfg_dev.allowed_origins, Vec::<String>::new());
+    }
+
+    #[test]
+    fn test_app_config_load() {
+        // This will at least run the AppConfig::load function for coverage.
+        // It's safe to run concurrently because it only reads env vars and .env
+        let config = AppConfig::load();
+        // Just assert some defaults if not overridden by the local environment.
+        assert!(!config.database_url.is_empty());
     }
 }

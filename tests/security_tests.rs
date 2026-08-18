@@ -30,9 +30,16 @@ fn create_test_state(
         allowed_origins,
         otel_service_name: "test".to_string(),
         otlp_endpoint: None,
+        jwks_url: None,
+        jwt_audience: None,
+        jwt_issuer: None,
     };
 
-    Ok(AppState { pool, config })
+    Ok(AppState {
+        pool,
+        config,
+        jwks_cache: None,
+    })
 }
 
 #[tokio::test]

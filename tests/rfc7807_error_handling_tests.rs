@@ -37,8 +37,15 @@ async fn setup_test_app() -> Result<Router, Box<dyn std::error::Error>> {
         allowed_origins: Vec::new(),
         otel_service_name: "test".to_string(),
         otlp_endpoint: None,
+        jwks_url: None,
+        jwt_audience: None,
+        jwt_issuer: None,
     };
-    let state = AppState { pool, config };
+    let state = AppState {
+        pool,
+        config,
+        jwks_cache: None,
+    };
     Ok(create_router(state))
 }
 

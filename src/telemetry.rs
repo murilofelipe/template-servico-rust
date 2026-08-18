@@ -100,4 +100,14 @@ mod tests {
     fn test_init_tracing_does_not_panic() {
         let _ = try_init_tracing(&AppEnvironment::Development, None, None);
     }
+
+    #[test]
+    fn test_init_tracing_production() {
+        let _ = try_init_tracing(&AppEnvironment::Production, None, None);
+    }
+
+    #[test]
+    fn test_init_tracing_test_env() {
+        let _ = try_init_tracing(&AppEnvironment::Test, None, None);
+    }
 }
